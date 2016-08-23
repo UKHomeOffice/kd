@@ -71,6 +71,12 @@ func main() {
 }
 
 func run(c *cli.Context) error {
+	if len(os.Args) < 2 {
+		cli.ShowAppHelp(c)
+	}
+	if len(c.StringSlice("file")) == 0 {
+		return cli.NewExitError("At least one resource file must be specified.", 1)
+	}
 	// Check if all files exist first - fail early
 	for _, fn := range c.StringSlice("file") {
 		if _, err := os.Stat(fn); err != nil {
