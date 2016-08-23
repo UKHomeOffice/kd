@@ -20,7 +20,7 @@ script:
     GOOS=linux GOARCH=arm CGO_ENABLED=0 go build -ldflags "-X main.Version=${TRAVIS_TAG:-git+${TRAVIS_COMMIT}}" -o bin/kd_linux_arm;
     GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=${TRAVIS_TAG:-git+${TRAVIS_COMMIT}}" -o bin/kd_darwin_amd64;
     GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=${TRAVIS_TAG:-git+${TRAVIS_COMMIT}}" -o bin/kd_windows_amd64.exe;
-    docker login -u "ukhomeofficedigital+drone_trigger" -p ${DOCKER_PASSWORD} quay.io;
+    docker login -u "ukhomeofficedigital+kubernetes_deploy_kd" -p ${DOCKER_PASSWORD} quay.io;
     docker build -t quay.io/ukhomeofficedigital/kd:${TRAVIS_TAG:-latest} .;
     docker push quay.io/ukhomeofficedigital/kd:${TRAVIS_TAG:-latest};
     fi
