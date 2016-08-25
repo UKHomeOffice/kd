@@ -139,17 +139,33 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 	// TODO: should use a proper timeout instead of retries
 	retries := c.Int("retries")
 	attempt := 1
+	if err := updateDeploymentStatus(c, r); err != nil {
+		return err
+	}
+	og := r.DeploymentStatus.ObservedGeneration
 	for {
 		if err := updateDeploymentStatus(c, r); err != nil {
 			return err
 		}
-		if r.DeploymentStatus.Replicas == r.DeploymentStatus.UpdatedReplicas {
-			fmt.Printf("%q deployment is complete: %d out of %d replicas ready.\n",
-				r.Name, r.DeploymentStatus.UpdatedReplicas, r.DeploymentStatus.Replicas)
+		// Fail the deployment in case another deployment has started
+		if og != r.DeploymentStatus.ObservedGeneration {
+			return fmt.Errorf("Deployment failed. It has been superseded by another deployment.")
+		}
+
+		// If this is a new deployment, r.DeploymentStatus.Replicas count will
+		// be 0, so we want to wait and retry
+		if r.DeploymentStatus.Replicas == 0 {
+			time.Sleep(5 * time.Second)
+			continue
+		}
+
+		if r.DeploymentStatus.UnavailableReplicas == 0 {
+			fmt.Printf("%q deployment is complete. Available replicas: %q.\n",
+				r.Name, r.DeploymentStatus.AvailableReplicas)
 			return nil
 		}
-		fmt.Printf("%q deployment in progress: %d out of %d replicas ready..\n",
-			r.Name, r.DeploymentStatus.UpdatedReplicas, r.DeploymentStatus.Replicas)
+		fmt.Printf("%q deployment in progress. Unavailable replicas: %q.\n",
+			r.Name, r.DeploymentStatus.UnavailableReplicas)
 		time.Sleep(time.Second * 30)
 		attempt++
 		if attempt > retries {
