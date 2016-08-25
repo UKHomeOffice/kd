@@ -160,11 +160,11 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 		}
 
 		if r.DeploymentStatus.UnavailableReplicas == 0 {
-			fmt.Printf("%q deployment is complete. Available replicas: %q.\n",
+			fmt.Printf("%q deployment is complete. Available replicas: %d.\n",
 				r.Name, r.DeploymentStatus.AvailableReplicas)
 			return nil
 		}
-		fmt.Printf("%q deployment in progress. Unavailable replicas: %q.\n",
+		fmt.Printf("%q deployment in progress. Unavailable replicas: %d.\n",
 			r.Name, r.DeploymentStatus.UnavailableReplicas)
 		time.Sleep(time.Second * 30)
 		attempt++
