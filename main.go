@@ -92,17 +92,13 @@ func run(c *cli.Context) error {
 		}
 		defer f.Close()
 
-		resource := ObjectResource{}
-		resource.FileName = fn
-		data, err := ioutil.ReadAll(f)
-		if err != nil {
+		resource := ObjectResource{FileName: fn}
+		if err := render(&resource, envToMap()); err != nil {
 			return cli.NewExitError(err.Error(), 1)
 		}
-		if err := yaml.Unmarshal(data, &resource); err != nil {
+		if err := yaml.Unmarshal(resource.Template, &resource); err != nil {
 			return cli.NewExitError(err.Error(), 1)
 		}
-		resource.Template = data
-
 		if err := deploy(c, &resource); err != nil {
 			return cli.NewExitError(err.Error(), 1)
 		}
@@ -119,9 +115,7 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 		return err
 	}
 
-	if err = render(r, envToMap(), stdin); err != nil {
-		return err
-	}
+	stdin.Write(r.Template)
 	stdin.Close()
 	if err != nil {
 		return err
@@ -159,7 +153,7 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 			continue
 		}
 
-		if r.DeploymentStatus.UnavailableReplicas == 0 {
+		if r.DeploymentStatus.UnavailableReplicas == 0 || r.DeploymentStatus.AvailableReplicas == r.DeploymentStatus.Replicas {
 			fmt.Printf("%q deployment is complete. Available replicas: %d.\n",
 				r.Name, r.DeploymentStatus.AvailableReplicas)
 			return nil

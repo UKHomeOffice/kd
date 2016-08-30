@@ -1,18 +1,24 @@
 package main
 
 import (
-	"io"
+	"bytes"
+	"io/ioutil"
 	"os"
 	"strings"
 	"text/template"
 )
 
-func render(r *ObjectResource, vars map[string]string, w io.Writer) error {
-	t := template.Must(template.New(r.FileName).Parse(string(r.Template)))
-	err := t.Execute(w, vars)
+func render(r *ObjectResource, vars map[string]string) error {
+	tmpl, err := ioutil.ReadFile(r.FileName)
 	if err != nil {
 		return err
 	}
+	var b bytes.Buffer
+	t := template.Must(template.New(r.FileName).Parse(string(tmpl)))
+	if err = t.Execute(&b, vars); err != nil {
+		return err
+	}
+	r.Template = b.Bytes()
 	return nil
 }
 
