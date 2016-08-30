@@ -153,7 +153,7 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 			continue
 		}
 
-		if r.DeploymentStatus.UnavailableReplicas == 0 {
+		if r.DeploymentStatus.UnavailableReplicas == 0 || r.DeploymentStatus.AvailableReplicas == r.DeploymentStatus.Replicas {
 			fmt.Printf("%q deployment is complete. Available replicas: %d.\n",
 				r.Name, r.DeploymentStatus.AvailableReplicas)
 			return nil
