@@ -141,10 +141,6 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 		if err := updateDeploymentStatus(c, r); err != nil {
 			return err
 		}
-		// Fail the deployment in case another deployment has started
-		if og != r.DeploymentStatus.ObservedGeneration {
-			return fmt.Errorf("Deployment failed. It has been superseded by another deployment.")
-		}
 
 		// If this is a new deployment, r.DeploymentStatus.Replicas count will
 		// be 0, so we want to wait and retry
@@ -164,6 +160,11 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 		attempt++
 		if attempt > retries {
 			return fmt.Errorf("Deployment failed. Max retries reached.")
+		}
+
+		// Fail the deployment in case another deployment has started
+		if og != r.DeploymentStatus.ObservedGeneration {
+			return fmt.Errorf("Deployment failed. It has been superseded by another deployment.")
 		}
 	}
 }
