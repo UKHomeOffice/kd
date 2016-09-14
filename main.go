@@ -25,13 +25,13 @@ func main() {
 		cli.BoolFlag{
 			Name:   "verbose",
 			Usage:  "verbose output",
-			EnvVar: "KD_VERBOSE,PLUGIN_VERBOSE",
+			EnvVar: "VERBOSE,PLUGIN_VERBOSE",
 			Hidden: true,
 		},
 		cli.BoolFlag{
 			Name:   "insecure-skip-tls-verify",
 			Usage:  "if true, the server's certificate will not be checked for validity",
-			EnvVar: "KD_INSECURE_SKIP_TLS_VERIFY,PLUGIN_INSECURE_SKIP_TLS_VERIFY",
+			EnvVar: "INSECURE_SKIP_TLS_VERIFY,PLUGIN_INSECURE_SKIP_TLS_VERIFY",
 		},
 		cli.StringFlag{
 			Name:   "kube-server, s",
@@ -51,12 +51,12 @@ func main() {
 		cli.StringFlag{
 			Name:   "namespace, n",
 			Usage:  "kubernetes `NAMESPACE`",
-			EnvVar: "KUBE_NAMESPACE,PLUGIN_NAMESPACE",
+			EnvVar: "KUBE_NAMESPACE,PLUGIN_KUBE_NAMESPACE",
 		},
 		cli.StringSliceFlag{
 			Name:   "file, f",
 			Usage:  "a list of kubernetes resources FILE",
-			EnvVar: "KD_FILES,PLUGIN_FILES",
+			EnvVar: "FILES,PLUGIN_FILES",
 		},
 		cli.IntFlag{
 			Name:   "retries",
@@ -190,19 +190,19 @@ func updateDeploymentStatus(c *cli.Context, r *ObjectResource) error {
 
 func newKubeCmd(c *cli.Context, args []string) *exec.Cmd {
 	kube := "kubectl"
-	if c.IsSet("kube-server") {
+	if c.IsSet("kube-server") || isAnyEnvSet("KUBE_SERVER", "PLUGIN_KUBE_SERVER") {
 		args = append(args, "--server="+c.String("kube-server"))
 	}
-	if c.IsSet("insecure-skip-tls-verify") {
+	if c.IsSet("insecure-skip-tls-verify") || isAnyEnvSet("INSECURE_SKIP_TLS_VERIFY", "PLUGIN_INSECURE_SKIP_TLS_VERIFY") {
 		args = append(args, "--insecure-skip-tls-verify")
 	}
-	if c.IsSet("kube-token") {
+	if c.IsSet("kube-token") || isAnyEnvSet("KUBE_TOKEN", "PLUGIN_KUBE_TOKEN") {
 		args = append(args, "--token="+c.String("kube-token"))
 	}
-	if c.IsSet("context") {
+	if c.IsSet("context") || isAnyEnvSet("KUBE_CONTEXT", "PLUGIN_KUBE_CONTEXT") {
 		args = append(args, "--context="+c.String("context"))
 	}
-	if c.IsSet("namespace") {
+	if c.IsSet("namespace") || isAnyEnvSet("KUBE_NAMESPACE", "PLUGIN_KUBE_NAMESPACE") {
 		args = append(args, "--namespace="+c.String("namespace"))
 	}
 	return exec.Command(kube, args...)
