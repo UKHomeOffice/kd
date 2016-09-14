@@ -53,6 +53,11 @@ func main() {
 			Usage:  "kubernetes `NAMESPACE`",
 			EnvVar: "KUBE_NAMESPACE,PLUGIN_KUBE_NAMESPACE",
 		},
+		cli.BoolFlag{
+			Name:   "fail-superseded",
+			Usage:  "fail deployment if it has been superseded by another deployment. WARNING: there are some bugs in kubernetes.",
+			EnvVar: "FAIL_SUPERSEDED,PLUGIN_FAIL_SUPERSEDED",
+		},
 		cli.StringSliceFlag{
 			Name:   "file, f",
 			Usage:  "a list of kubernetes resources FILE",
@@ -163,8 +168,10 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 		}
 
 		// Fail the deployment in case another deployment has started
-		if og != r.DeploymentStatus.ObservedGeneration {
-			return fmt.Errorf("Deployment failed. It has been superseded by another deployment.")
+		if c.Bool("fail-superseded") {
+			if og != r.DeploymentStatus.ObservedGeneration {
+				return fmt.Errorf("Deployment failed. It has been superseded by another deployment.")
+			}
 		}
 	}
 }
