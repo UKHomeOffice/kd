@@ -69,6 +69,12 @@ func main() {
 			EnvVar: "RETRIES,PLUGIN_RETRIES",
 			Value:  10,
 		},
+		cli.DurationFlag{
+			Name:   "check-interval",
+			Usage:  "deployment status check interval",
+			EnvVar: "CHECK_INTERVAL,PLUGIN_CHECK_INTERVAL",
+			Value:  10 * time.Second,
+		},
 	}
 
 	app.Action = run
@@ -199,19 +205,19 @@ func updateDeploymentStatus(c *cli.Context, r *ObjectResource) error {
 
 func newKubeCmd(c *cli.Context, args []string) *exec.Cmd {
 	kube := "kubectl"
-	if c.IsSet("kube-server") || isAnyEnvSet("KUBE_SERVER", "PLUGIN_KUBE_SERVER") {
+	if c.IsSet("kube-server") {
 		args = append(args, "--server="+c.String("kube-server"))
 	}
-	if c.IsSet("insecure-skip-tls-verify") || isAnyEnvSet("INSECURE_SKIP_TLS_VERIFY", "PLUGIN_INSECURE_SKIP_TLS_VERIFY") {
+	if c.IsSet("insecure-skip-tls-verify") {
 		args = append(args, "--insecure-skip-tls-verify")
 	}
-	if c.IsSet("kube-token") || isAnyEnvSet("KUBE_TOKEN", "PLUGIN_KUBE_TOKEN") {
+	if c.IsSet("kube-token") {
 		args = append(args, "--token="+c.String("kube-token"))
 	}
-	if c.IsSet("context") || isAnyEnvSet("KUBE_CONTEXT", "PLUGIN_KUBE_CONTEXT") {
+	if c.IsSet("context") {
 		args = append(args, "--context="+c.String("context"))
 	}
-	if c.IsSet("namespace") || isAnyEnvSet("KUBE_NAMESPACE", "PLUGIN_KUBE_NAMESPACE") {
+	if c.IsSet("namespace") {
 		args = append(args, "--namespace="+c.String("namespace"))
 	}
 	return exec.Command(kube, args...)
