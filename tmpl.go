@@ -15,6 +15,7 @@ func render(r *ObjectResource, vars map[string]string) error {
 	}
 	var b bytes.Buffer
 	t := template.Must(template.New(r.FileName).Parse(string(tmpl)))
+	t.Option("missingkey=error")
 	if err = t.Execute(&b, vars); err != nil {
 		return err
 	}
