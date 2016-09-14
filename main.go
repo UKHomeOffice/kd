@@ -143,6 +143,7 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 	}
 	og := r.DeploymentStatus.ObservedGeneration
 	for {
+		r.DeploymentStatus = DeploymentStatus{}
 		if err := updateDeploymentStatus(c, r); err != nil {
 			return err
 		}
@@ -154,7 +155,8 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 			continue
 		}
 
-		if r.DeploymentStatus.UnavailableReplicas == 0 || r.DeploymentStatus.AvailableReplicas == r.DeploymentStatus.Replicas {
+		if (r.DeploymentStatus.UnavailableReplicas == 0 || r.DeploymentStatus.AvailableReplicas == r.DeploymentStatus.Replicas) &&
+			r.DeploymentStatus.Replicas == r.DeploymentStatus.UpdatedReplicas {
 			fmt.Printf("%q deployment is complete. Available replicas: %d.\n",
 				r.Name, r.DeploymentStatus.AvailableReplicas)
 			return nil
