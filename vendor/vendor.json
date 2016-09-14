@@ -7,10 +7,10 @@
 			"revision": ""
 		},
 		{
-			"checksumSHA1": "U2NZEONYomuJ0dbAaSMATCBoiFY=",
+			"checksumSHA1": "PBrKjn7ETkjnXmNqaWIX711xQSQ=",
 			"path": "github.com/urfave/cli",
-			"revision": "05fe449c81eb7305a34e9253c321c960a1c5e057",
-			"revisionTime": "2016-08-23T15:25:51Z"
+			"revision": "61f519fe5e57c2518c03627b194899a105838eba",
+			"revisionTime": "2016-09-12T03:00:11Z"
 		},
 		{
 			"checksumSHA1": "YzHkxW3fGe5Oc5AVatDNn1g5Ung=",
@@ -19,10 +19,10 @@
 			"revisionTime": "2016-01-05T16:49:36Z"
 		},
 		{
-			"checksumSHA1": "jOGdm8IZTAHZNv+6KIiXv0nloBM=",
+			"checksumSHA1": "K21POG6vpC/NAie+NRLnsTAiMS8=",
 			"path": "gopkg.in/yaml.v2",
-			"revision": "e4d366fc3c7938e2958e662b4258c7a89e1f0e3e",
-			"revisionTime": "2016-07-15T03:37:55Z"
+			"revision": "31c299268d302dd0aa9a0dcf765a3d58971ac83f",
+			"revisionTime": "2016-09-12T16:56:03Z"
 		}
 	],
 	"rootPath": "github.com/UKHomeOffice/kd"
