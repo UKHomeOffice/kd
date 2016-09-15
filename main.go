@@ -73,12 +73,12 @@ func main() {
 		},
 		cli.StringSliceFlag{
 			Name:   "file, f",
-			Usage:  "a list of kubernetes resources FILE",
+			Usage:  "list of kubernetes resources FILE",
 			EnvVar: "FILES,PLUGIN_FILES",
 		},
 		cli.IntFlag{
 			Name:   "retries",
-			Usage:  "deployment status check retries. Sleep 30s between each check",
+			Usage:  "number of deployment status check retries",
 			EnvVar: "RETRIES,PLUGIN_RETRIES",
 			Value:  10,
 		},
@@ -95,9 +95,6 @@ func main() {
 }
 
 func run(c *cli.Context) error {
-	if len(os.Args) < 2 {
-		cli.ShowAppHelp(c)
-	}
 	if len(c.StringSlice("file")) == 0 {
 		logError.Print("no kubernetes resource files specified")
 		return cli.NewExitError("", 1)
