@@ -165,6 +165,15 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 	if err := updateDeploymentStatus(c, r); err != nil {
 		return err
 	}
+	// If this is a new deployment, Replicas and UpdatedReplicas count will
+	// be 0, so we want to wait and retry
+	if r.DeploymentStatus.Replicas == 0 && r.DeploymentStatus.UpdatedReplicas == 0 {
+		if c.Bool("debug") {
+			logDebug.Printf("new deployment, sleeping 3 seconds")
+		}
+		time.Sleep(3 * time.Second)
+	}
+
 	og := r.DeploymentStatus.ObservedGeneration
 	for {
 		r.DeploymentStatus = DeploymentStatus{}
@@ -175,7 +184,7 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 			logDebug.Printf("fetching deployment status: %+v", r.DeploymentStatus)
 		}
 
-		if (r.DeploymentStatus.UnavailableReplicas == 0 || r.DeploymentStatus.AvailableReplicas == r.DeploymentStatus.Replicas) &&
+		if (r.DeploymentStatus.UnavailableReplicas == 0 && r.DeploymentStatus.AvailableReplicas == r.DeploymentStatus.Replicas) &&
 			r.DeploymentStatus.Replicas == r.DeploymentStatus.UpdatedReplicas {
 			logInfo.Printf("deployment %q is complete. Available replicas: %d\n",
 				r.Name, r.DeploymentStatus.AvailableReplicas)
