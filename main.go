@@ -3,16 +3,30 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/urfave/cli"
 	"gopkg.in/yaml.v2"
 )
 
-// Version is set at compile time, passing -ldflags "-X main.Version=<build version>"
-var Version string
+var (
+	// Version is set at compile time, passing -ldflags "-X main.Version=<build version>"
+	Version string
+
+	logInfo  *log.Logger
+	logError *log.Logger
+	logDebug *log.Logger
+)
+
+func init() {
+	logInfo = log.New(os.Stdout, "[INFO] ", log.Ldate|log.Ltime|log.Lshortfile)
+	logError = log.New(os.Stderr, "[ERROR] ", log.Ldate|log.Ltime|log.Lshortfile)
+	logDebug = log.New(os.Stderr, "[DEBUG] ", log.Ldate|log.Ltime|log.Lshortfile)
+}
 
 func main() {
 	app := cli.NewApp()
@@ -23,10 +37,9 @@ func main() {
 
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{
-			Name:   "verbose",
-			Usage:  "verbose output",
-			EnvVar: "VERBOSE,PLUGIN_VERBOSE",
-			Hidden: true,
+			Name:   "debug",
+			Usage:  "debug output",
+			EnvVar: "DEBUG,PLUGIN_DEBUG",
 		},
 		cli.BoolFlag{
 			Name:   "insecure-skip-tls-verify",
@@ -86,12 +99,14 @@ func run(c *cli.Context) error {
 		cli.ShowAppHelp(c)
 	}
 	if len(c.StringSlice("file")) == 0 {
-		return cli.NewExitError("At least one resource file must be specified.", 1)
+		logError.Print("no kubernetes resource files specified")
+		return cli.NewExitError("", 1)
 	}
 	// Check if all files exist first - fail early
 	for _, fn := range c.StringSlice("file") {
 		if _, err := os.Stat(fn); err != nil {
-			return cli.NewExitError(err.Error(), 1)
+			logError.Println(err)
+			return cli.NewExitError("", 1)
 		}
 	}
 
@@ -99,19 +114,23 @@ func run(c *cli.Context) error {
 		// TODO: check if `-f` is a directory and expand all files in it
 		f, err := os.Open(fn)
 		if err != nil {
-			return cli.NewExitError(err.Error(), 1)
+			logError.Println(err)
+			return cli.NewExitError("", 1)
 		}
 		defer f.Close()
 
 		resource := ObjectResource{FileName: fn}
-		if err := render(&resource, envToMap()); err != nil {
-			return cli.NewExitError(err.Error(), 1)
+		if err := render(&resource, envToMap(), c.Bool("debug")); err != nil {
+			logError.Println(err)
+			return cli.NewExitError("", 1)
 		}
 		if err := yaml.Unmarshal(resource.Template, &resource); err != nil {
-			return cli.NewExitError(err.Error(), 1)
+			logError.Println(err)
+			return cli.NewExitError("", 1)
 		}
 		if err := deploy(c, &resource); err != nil {
-			return cli.NewExitError(err.Error(), 1)
+			logError.Println(err)
+			return cli.NewExitError("", 1)
 		}
 	}
 
@@ -121,6 +140,9 @@ func run(c *cli.Context) error {
 func deploy(c *cli.Context, r *ObjectResource) error {
 	args := []string{"apply", "-f", "-"}
 	cmd := newKubeCmd(c, args)
+	if c.Bool("debug") {
+		logDebug.Printf("kubectl arguments: %q", strings.Join(cmd.Args, " "))
+	}
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return err
@@ -131,12 +153,11 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 	if err != nil {
 		return err
 	}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	logInfo.Printf("deploying %s/%s", strings.ToLower(r.Kind), r.Name)
 	if err = cmd.Run(); err != nil {
 		return err
 	}
-
+	logInfo.Printf("%s %q submitted", strings.ToLower(r.Kind), r.Name)
 	if r.Kind != "Deployment" {
 		return nil
 	}
@@ -153,32 +174,31 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 		if err := updateDeploymentStatus(c, r); err != nil {
 			return err
 		}
-
-		// If this is a new deployment, r.DeploymentStatus.Replicas count will
-		// be 0, so we want to wait and retry
-		if r.DeploymentStatus.Replicas == 0 {
-			time.Sleep(5 * time.Second)
-			continue
+		if c.Bool("debug") {
+			logDebug.Printf("fetching deployment status: %+v", r.DeploymentStatus)
 		}
 
 		if (r.DeploymentStatus.UnavailableReplicas == 0 || r.DeploymentStatus.AvailableReplicas == r.DeploymentStatus.Replicas) &&
 			r.DeploymentStatus.Replicas == r.DeploymentStatus.UpdatedReplicas {
-			fmt.Printf("%q deployment is complete. Available replicas: %d.\n",
+			logInfo.Printf("deployment %q is complete. Available replicas: %d\n",
 				r.Name, r.DeploymentStatus.AvailableReplicas)
 			return nil
 		}
-		fmt.Printf("%q deployment in progress. Unavailable replicas: %d.\n",
+		logInfo.Printf("deployment %q in progress. Unavailable replicas: %d.\n",
 			r.Name, r.DeploymentStatus.UnavailableReplicas)
-		time.Sleep(time.Second * 30)
+		if c.Bool("debug") {
+			logDebug.Printf("sleeping for %q", c.Duration("check-interval"))
+		}
+		time.Sleep(c.Duration("check-interval"))
 		attempt++
 		if attempt > retries {
-			return fmt.Errorf("Deployment failed. Max retries reached.")
+			return fmt.Errorf("deployment %q failed. Max retries reached", r.Name)
 		}
 
 		// Fail the deployment in case another deployment has started
 		if c.Bool("fail-superseded") {
 			if og != r.DeploymentStatus.ObservedGeneration {
-				return fmt.Errorf("Deployment failed. It has been superseded by another deployment.")
+				return fmt.Errorf("deployment failed. It has been superseded by another deployment")
 			}
 		}
 	}
@@ -205,20 +225,21 @@ func updateDeploymentStatus(c *cli.Context, r *ObjectResource) error {
 
 func newKubeCmd(c *cli.Context, args []string) *exec.Cmd {
 	kube := "kubectl"
-	if c.IsSet("kube-server") {
-		args = append(args, "--server="+c.String("kube-server"))
-	}
-	if c.IsSet("insecure-skip-tls-verify") {
-		args = append(args, "--insecure-skip-tls-verify")
-	}
-	if c.IsSet("kube-token") {
-		args = append(args, "--token="+c.String("kube-token"))
+	if c.IsSet("namespace") {
+		args = append([]string{"--namespace=" + c.String("namespace")}, args...)
 	}
 	if c.IsSet("context") {
-		args = append(args, "--context="+c.String("context"))
+		args = append([]string{"--context=" + c.String("context")}, args...)
 	}
-	if c.IsSet("namespace") {
-		args = append(args, "--namespace="+c.String("namespace"))
+	if c.IsSet("kube-token") {
+		args = append([]string{"--token=" + c.String("kube-token")}, args...)
 	}
+	if c.IsSet("insecure-skip-tls-verify") {
+		args = append([]string{"--insecure-skip-tls-verify"}, args...)
+	}
+	if c.IsSet("kube-server") {
+		args = append([]string{"--server=" + c.String("kube-server")}, args...)
+	}
+
 	return exec.Command(kube, args...)
 }
