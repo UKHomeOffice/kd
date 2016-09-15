@@ -86,7 +86,7 @@ func main() {
 			Name:   "check-interval",
 			Usage:  "deployment status check interval",
 			EnvVar: "CHECK_INTERVAL,PLUGIN_CHECK_INTERVAL",
-			Value:  10 * time.Second,
+			Value:  15 * time.Second,
 		},
 	}
 
