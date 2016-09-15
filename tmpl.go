@@ -8,18 +8,24 @@ import (
 	"text/template"
 )
 
-func render(r *ObjectResource, vars map[string]string) error {
+func render(r *ObjectResource, vars map[string]string, debug bool) error {
+	if debug {
+		logDebug.Printf("rendering %q template.", r.FileName)
+	}
 	tmpl, err := ioutil.ReadFile(r.FileName)
 	if err != nil {
 		return err
 	}
-	var b bytes.Buffer
 	t := template.Must(template.New(r.FileName).Parse(string(tmpl)))
 	t.Option("missingkey=error")
+	var b bytes.Buffer
 	if err = t.Execute(&b, vars); err != nil {
 		return err
 	}
 	r.Template = b.Bytes()
+	if debug {
+		logDebug.Printf("template content:\n" + string(r.Template))
+	}
 	return nil
 }
 
