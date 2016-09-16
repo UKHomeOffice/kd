@@ -37,6 +37,11 @@ func main() {
 
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{
+			Name:   "render",
+			Usage:  "render templated files and save them locally",
+			EnvVar: "RENDER_TEMPLATE",
+		},
+		cli.BoolFlag{
 			Name:   "debug",
 			Usage:  "debug output",
 			EnvVar: "DEBUG,PLUGIN_DEBUG",
@@ -117,17 +122,25 @@ func run(c *cli.Context) error {
 		defer f.Close()
 
 		resource := ObjectResource{FileName: fn}
-		if err := render(&resource, envToMap(), c.Bool("debug")); err != nil {
-			logError.Println(err)
-			return cli.NewExitError("", 1)
-		}
-		if err := yaml.Unmarshal(resource.Template, &resource); err != nil {
-			logError.Println(err)
-			return cli.NewExitError("", 1)
-		}
-		if err := deploy(c, &resource); err != nil {
-			logError.Println(err)
-			return cli.NewExitError("", 1)
+		if c.Bool("render") {
+			if err := justRender(&resource, envToMap(), c.Bool("debug"), fn); err != nil {
+				logError.Println(err)
+				return cli.NewExitError("", 1)
+			}
+		} else {
+			if err := render(&resource, envToMap(), c.Bool("debug")); err != nil {
+				logError.Println(err)
+				return cli.NewExitError("", 1)
+			}
+			if err := yaml.Unmarshal(resource.Template, &resource); err != nil {
+				logError.Println(err)
+				return cli.NewExitError("", 1)
+			}
+			if err := deploy(c, &resource); err != nil {
+				logError.Println(err)
+				return cli.NewExitError("", 1)
+			}
+
 		}
 	}
 
