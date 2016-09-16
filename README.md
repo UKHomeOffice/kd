@@ -60,6 +60,20 @@ deployment "nginx" created
 "nginx" deployment is complete: 5 out of 5 replicas ready.
 ```
 
+## Render and test locally your template files
+
+Pass the `--render` flag to **kd** and the file paths to your template file to see them rendered.
+
+**kd** renders and writes the file inside `$CWD/.kd/`
+
+```bash
+kd --render --file util/test-deployment.yaml --file util/test-svc.yaml
+...
+ls -lh .kd/
+total 8.0K
+-rw-r--r-- 1 stefan users 854 Sep 16 16:23 test-deployment.yaml
+-rw-r--r-- 1 stefan users 224 Sep 16 16:23 test-svc.yaml
+```
 
 ## Configuration
 
@@ -74,14 +88,16 @@ NAME:
 
 USAGE:
    kd [global options] command [command options] [arguments...]
-   
+
 AUTHOR(S):
-   Vaidas Jablonskis <jablonskis@gmail.com> 
-   
+   Vaidas Jablonskis <jablonskis@gmail.com>
+
 COMMANDS:
      help, h  Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
+  --render                             render templated files and save them locally [$RENDER_TEMPLATE]
+  --debug                              debug output [$DEBUG, $PLUGIN_DEBUG]
    --insecure-skip-tls-verify           if true, the server's certificate will not be checked for validity [$KD_INSECURE_SKIP_TLS_VERIFY, $PLUGIN_INSECURE_SKIP_TLS_VERIFY]
    --kube-server URL, -s URL            kubernetes api server URL [$KUBE_SERVER, $PLUGIN_KUBE_SERVER]
    --kube-token TOKEN, -t TOKEN         kubernetes auth TOKEN [$KUBE_TOKEN, $PLUGIN_KUBE_TOKEN]
@@ -123,4 +139,3 @@ We welcome pull requests. Please check existing issues and PRs before submitting
 ## Author
 
 Vaidas Jablonskis [vaijab](https://github.com/vaijab)
-
