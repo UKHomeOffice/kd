@@ -223,6 +223,11 @@ func updateDeploymentStatus(c *cli.Context, r *ObjectResource) error {
 	if err := yaml.Unmarshal(data, r); err != nil {
 		return err
 	}
+	if c.Bool("debug") {
+		logDebug.Println("start of deployment yaml received from kubectl")
+		fmt.Println(string(data))
+		logDebug.Println("end of deployment yaml received from kubectl")
+	}
 	if err := cmd.Wait(); err != nil {
 		return err
 	}
