@@ -13,7 +13,7 @@ This is a very minimalistic tool for deploying kubernetes resources.
 
 ## Getting Started
 
-There is only requirement and that is a kubectl binary in your `${PATH}`. You
+The is only requirement and that is a kubectl binary in your `${PATH}`. You
 can use the docker image or download the binary for your OS from
 [releases](https://github.com/UKHomeOffice/kd/releases) page.
 
