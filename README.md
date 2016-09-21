@@ -55,11 +55,14 @@ spec:
 ```bash
 $ export NGINX_IMAGE_TAG=1.11-alpine
 $ kd --context=mykube --namespace=testing --file nginx-deployment.yaml
-deployment "nginx" created
-"nginx" deployment in progress: 3 out of 5 replicas ready..
-"nginx" deployment is complete: 5 out of 5 replicas ready.
+[INFO] 2016/09/21 14:06:37 main.go:153: deploying deployment/nginx
+[INFO] 2016/09/21 14:06:38 main.go:157: deployment "nginx" submitted
+[INFO] 2016/09/21 14:06:41 main.go:194: deployment "nginx" in progress. Unavailable replicas: 5.
+[INFO] 2016/09/21 14:06:56 main.go:194: deployment "nginx" in progress. Unavailable replicas: 5.
+[INFO] 2016/09/21 14:07:11 main.go:190: deployment "nginx" is complete. Available replicas: 5
 ```
 
+You can fail an ongoing deployment if there's been a new deployment by adding `--fail-superseded` flag.
 
 ## Configuration
 
@@ -75,6 +78,9 @@ NAME:
 USAGE:
    kd [global options] command [command options] [arguments...]
    
+VERSION:
+   v0.2.0
+
 AUTHOR(S):
    Vaidas Jablonskis <jablonskis@gmail.com> 
    
@@ -82,13 +88,16 @@ COMMANDS:
      help, h  Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-   --insecure-skip-tls-verify           if true, the server's certificate will not be checked for validity [$KD_INSECURE_SKIP_TLS_VERIFY, $PLUGIN_INSECURE_SKIP_TLS_VERIFY]
+   --debug                              debug output [$DEBUG, $PLUGIN_DEBUG]
+   --insecure-skip-tls-verify           if true, the server's certificate will not be checked for validity [$INSECURE_SKIP_TLS_VERIFY, $PLUGIN_INSECURE_SKIP_TLS_VERIFY]
    --kube-server URL, -s URL            kubernetes api server URL [$KUBE_SERVER, $PLUGIN_KUBE_SERVER]
    --kube-token TOKEN, -t TOKEN         kubernetes auth TOKEN [$KUBE_TOKEN, $PLUGIN_KUBE_TOKEN]
    --context CONTEXT, -c CONTEXT        kube config CONTEXT [$KUBE_CONTEXT, $PLUGIN_CONTEXT]
-   --namespace NAMESPACE, -n NAMESPACE  kubernetes NAMESPACE [$KUBE_NAMESPACE, $PLUGIN_NAMESPACE]
-   --file value, -f value               a list of kubernetes resources FILE [$KD_FILES, $PLUGIN_FILES]
-   --retries value                      deployment status check retries. Sleep 30s between each check (default: 10) [$RETRIES, $PLUGIN_RETRIES]
+   --namespace NAMESPACE, -n NAMESPACE  kubernetes NAMESPACE [$KUBE_NAMESPACE, $PLUGIN_KUBE_NAMESPACE]
+   --fail-superseded                    fail deployment if it has been superseded by another deployment. WARNING: there are some bugs in kubernetes. [$FAIL_SUPERSEDED, $PLUGIN_FAIL_SUPERSEDED]
+   --file value, -f value               list of kubernetes resources FILE [$FILES, $PLUGIN_FILES]
+   --retries value                      number of deployment status check retries (default: 10) [$RETRIES, $PLUGIN_RETRIES]
+   --check-interval value               deployment status check interval (default: 15s) [$CHECK_INTERVAL, $PLUGIN_CHECK_INTERVAL]
    --help, -h                           show help
    --version, -v                        print the version
 ```
@@ -117,7 +126,8 @@ To create a new release, just create a new tag off master.
 
 ## Contributing
 
-We welcome pull requests. Please check existing issues and PRs before submitting a patch.
+We welcome pull requests. Please raise an issue to discuss your changes before
+submitting a patch.
 
 
 ## Author
