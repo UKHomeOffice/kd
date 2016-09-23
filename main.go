@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -145,6 +146,10 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 		return err
 	}
 
+	var outbuf, errbuf bytes.Buffer
+	cmd.Stdout = &outbuf
+	cmd.Stderr = &errbuf
+
 	stdin.Write(r.Template)
 	stdin.Close()
 	if err != nil {
@@ -152,9 +157,10 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 	}
 	logInfo.Printf("deploying %s/%s", strings.ToLower(r.Kind), r.Name)
 	if err = cmd.Run(); err != nil {
+		logError.Print(errbuf.String())
 		return err
 	}
-	logInfo.Printf("%s %q submitted", strings.ToLower(r.Kind), r.Name)
+	logInfo.Print(outbuf.String())
 	if r.Kind != "Deployment" {
 		return nil
 	}
