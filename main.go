@@ -168,18 +168,16 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 	// TODO: should use a proper timeout instead of retries
 	retries := c.Int("retries")
 	attempt := 1
+	// Occasionally kubectl returns too early and deployment status we get back
+	// is an old deployment
+	if c.Bool("debug") {
+		logDebug.Printf("sleeping 3 seconds before checking deployment status for the first time")
+	}
+	time.Sleep(3 * time.Second)
+
 	if err := updateDeploymentStatus(c, r); err != nil {
 		return err
 	}
-	// If this is a new deployment, Replicas and UpdatedReplicas count will
-	// be 0, so we want to wait and retry
-	if r.DeploymentStatus.Replicas == 0 && r.DeploymentStatus.UpdatedReplicas == 0 {
-		if c.Bool("debug") {
-			logDebug.Printf("new deployment, sleeping 3 seconds")
-		}
-		time.Sleep(3 * time.Second)
-	}
-
 	og := r.DeploymentStatus.ObservedGeneration
 	for {
 		r.DeploymentStatus = DeploymentStatus{}
