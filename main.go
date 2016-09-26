@@ -77,17 +77,17 @@ func main() {
 			Usage:  "list of kubernetes resources FILE",
 			EnvVar: "FILES,PLUGIN_FILES",
 		},
-		cli.IntFlag{
-			Name:   "retries",
-			Usage:  "number of deployment status check retries",
-			EnvVar: "RETRIES,PLUGIN_RETRIES",
-			Value:  10,
+		cli.DurationFlag{
+			Name:   "timeout, T",
+			Usage:  "the amount of time to wait for a successful deployment",
+			EnvVar: "TIMEOUT,PLUGIN_TIMEOUT",
+			Value:  time.Duration(3) * time.Minute,
 		},
 		cli.DurationFlag{
 			Name:   "check-interval",
 			Usage:  "deployment status check interval",
 			EnvVar: "CHECK_INTERVAL,PLUGIN_CHECK_INTERVAL",
-			Value:  15 * time.Second,
+			Value:  time.Duration(500) * time.Millisecond,
 		},
 	}
 
@@ -157,7 +157,6 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 	}
 	logInfo.Printf("deploying %s/%s", strings.ToLower(r.Kind), r.Name)
 	if err = cmd.Run(); err != nil {
-		logError.Print(errbuf.String())
 		return err
 	}
 	logInfo.Print(outbuf.String())
@@ -165,11 +164,6 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 		return nil
 	}
 
-	// TODO: should use a proper timeout instead of retries
-	retries := c.Int("retries")
-	attempt := 1
-	// Occasionally kubectl returns too early and deployment status we get back
-	// is an old deployment
 	if c.Bool("debug") {
 		logDebug.Printf("sleeping 3 seconds before checking deployment status for the first time")
 	}
@@ -178,36 +172,36 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 	if err := updateDeploymentStatus(c, r); err != nil {
 		return err
 	}
+
+	ticker := time.NewTicker(c.Duration("check-interval"))
+	timeout := time.After(c.Duration("timeout"))
 	og := r.DeploymentStatus.ObservedGeneration
+
 	for {
-		r.DeploymentStatus = DeploymentStatus{}
-		if err := updateDeploymentStatus(c, r); err != nil {
-			return err
-		}
-		if c.Bool("debug") {
-			logDebug.Printf("fetching deployment status: %+v", r.DeploymentStatus)
-		}
+		select {
+		case <-timeout:
+			return fmt.Errorf("deployment %q timed out after %s", r.Name, c.Duration("timeout").String())
+		case <-ticker.C:
+			r.DeploymentStatus = DeploymentStatus{}
+			// @TODO should a one-off error (perhaps network issue) cause us to completly fail?
+			if err := updateDeploymentStatus(c, r); err != nil {
+				return err
+			}
+			if c.Bool("debug") {
+				logDebug.Printf("fetching deployment status: %+v", r.DeploymentStatus)
+			}
 
-		if (r.DeploymentStatus.UnavailableReplicas == 0 && r.DeploymentStatus.AvailableReplicas == r.DeploymentStatus.Replicas) &&
-			r.DeploymentStatus.Replicas == r.DeploymentStatus.UpdatedReplicas {
-			logInfo.Printf("deployment %q is complete. Available replicas: %d\n",
-				r.Name, r.DeploymentStatus.AvailableReplicas)
-			return nil
-		}
-		logInfo.Printf("deployment %q in progress. Unavailable replicas: %d.\n",
-			r.Name, r.DeploymentStatus.UnavailableReplicas)
-		if c.Bool("debug") {
-			logDebug.Printf("sleeping for %q", c.Duration("check-interval"))
-		}
-		time.Sleep(c.Duration("check-interval"))
-		attempt++
-		if attempt > retries {
-			return fmt.Errorf("deployment %q failed. Max retries reached", r.Name)
-		}
+			if (r.DeploymentStatus.UnavailableReplicas == 0 && r.DeploymentStatus.AvailableReplicas == r.DeploymentStatus.Replicas) &&
+				r.DeploymentStatus.Replicas == r.DeploymentStatus.UpdatedReplicas {
+				logInfo.Printf("deployment %q is complete. Available replicas: %d\n",
+					r.Name, r.DeploymentStatus.AvailableReplicas)
+				return nil
+			}
+			logInfo.Printf("deployment %q in progress. Unavailable replicas: %d.\n",
+				r.Name, r.DeploymentStatus.UnavailableReplicas)
 
-		// Fail the deployment in case another deployment has started
-		if c.Bool("fail-superseded") {
-			if og != r.DeploymentStatus.ObservedGeneration {
+			// Fail the deployment in case another deployment has started
+			if og != r.DeploymentStatus.ObservedGeneration && c.Bool("fail-superseded") {
 				return fmt.Errorf("deployment failed. It has been superseded by another deployment")
 			}
 		}
