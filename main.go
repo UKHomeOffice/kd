@@ -2,11 +2,13 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -72,63 +74,95 @@ func main() {
 			Usage:  "fail deployment if it has been superseded by another deployment. WARNING: there are some bugs in kubernetes.",
 			EnvVar: "FAIL_SUPERSEDED,PLUGIN_FAIL_SUPERSEDED",
 		},
+		cli.StringFlag{
+			Name:   "certificate-authority",
+			Usage:  "the path to a file containing the CA for kubernetes API `PATH`",
+			EnvVar: "KUBE_CERTIFICATE_AUTHORITY,PLUGIN_KUBE_CERTIFICATE_AUHORITY",
+		},
+		cli.StringFlag{
+			Name:   "certificate-authority-data",
+			Usage:  "the certificate authority data for the kubernetes API `PATH`",
+			EnvVar: "KUBE_CERTIFICATE_AUTHORITY_DATA,PLUGIN_KUBE_CERTIFICATE_AUHORITY_DATA",
+		},
+		cli.StringFlag{
+			Name:  "certificate-authority-file",
+			Usage: "the path to file the certificate authority file from certifacte-authority-data option",
+			Value: "/tmp/kube-ca.pem",
+		},
 		cli.StringSliceFlag{
 			Name:   "file, f",
-			Usage:  "list of kubernetes resources FILE",
+			Usage:  "the path to a file or directory containing kubernetes resource/s `PATH`",
 			EnvVar: "FILES,PLUGIN_FILES",
 		},
 		cli.DurationFlag{
 			Name:   "timeout, T",
-			Usage:  "the amount of time to wait for a successful deployment",
+			Usage:  "the amount of time to wait for a successful deployment `TIMEOUT`",
 			EnvVar: "TIMEOUT,PLUGIN_TIMEOUT",
 			Value:  time.Duration(3) * time.Minute,
 		},
 		cli.DurationFlag{
 			Name:   "check-interval",
-			Usage:  "deployment status check interval",
+			Usage:  "deployment status check interval `INTERVAL`",
 			EnvVar: "CHECK_INTERVAL,PLUGIN_CHECK_INTERVAL",
-			Value:  time.Duration(500) * time.Millisecond,
+			Value:  time.Duration(1000) * time.Millisecond,
 		},
 	}
 
-	app.Action = run
+	app.Action = func(cx *cli.Context) error {
+		if err := run(cx); err != nil {
+			logError.Println(err)
+			return cli.NewExitError("", 1)
+		}
+
+		return nil
+	}
 	app.Run(os.Args)
 }
 
 func run(c *cli.Context) error {
+	// Check we have some files to process
 	if len(c.StringSlice("file")) == 0 {
-		logError.Print("no kubernetes resource files specified")
-		return cli.NewExitError("", 1)
+		return errors.New("no kubernetes resource files specified")
 	}
-	// Check if all files exist first - fail early
+
+	// Check if all files exist first - fail early or building up a list of files
+	var list []string
 	for _, fn := range c.StringSlice("file") {
-		if _, err := os.Stat(fn); err != nil {
-			logError.Println(err)
-			return cli.NewExitError("", 1)
+		stat, err := os.Stat(fn)
+		if err != nil {
+			return err
+		}
+		switch stat.IsDir() {
+		case true:
+			files, err := listDirectory(fn)
+			if err != nil {
+				return err
+			}
+			list = append(list, files...)
+		default:
+			list = append(list, fn)
 		}
 	}
 
-	for _, fn := range c.StringSlice("file") {
-		// TODO: check if `-f` is a directory and expand all files in it
+	// Iterate the list of files and deploy resources
+	for _, fn := range list {
 		f, err := os.Open(fn)
 		if err != nil {
-			logError.Println(err)
-			return cli.NewExitError("", 1)
+			return err
 		}
+		// TODO: should probably move this section into a named or anonymous method,
+		// as deferring in a loop bad practice
 		defer f.Close()
 
 		resource := ObjectResource{FileName: fn}
 		if err := render(&resource, envToMap(), c.Bool("debug")); err != nil {
-			logError.Println(err)
-			return cli.NewExitError("", 1)
+			return err
 		}
 		if err := yaml.Unmarshal(resource.Template, &resource); err != nil {
-			logError.Println(err)
-			return cli.NewExitError("", 1)
+			return err
 		}
 		if err := deploy(c, &resource); err != nil {
-			logError.Println(err)
-			return cli.NewExitError("", 1)
+			return err
 		}
 	}
 
@@ -137,7 +171,12 @@ func run(c *cli.Context) error {
 
 func deploy(c *cli.Context, r *ObjectResource) error {
 	args := []string{"apply", "-f", "-"}
-	cmd := newKubeCmd(c, args)
+
+	cmd, err := newKubeCmd(c, args)
+	if err != nil {
+		return err
+	}
+
 	if c.Bool("debug") {
 		logDebug.Printf("kubectl arguments: %q", strings.Join(cmd.Args, " "))
 	}
@@ -210,7 +249,10 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 
 func updateDeploymentStatus(c *cli.Context, r *ObjectResource) error {
 	args := []string{"get", "deployment/" + r.Name, "-o", "yaml"}
-	cmd := newKubeCmd(c, args)
+	cmd, err := newKubeCmd(c, args)
+	if err != nil {
+		return err
+	}
 	cmd.Stderr = os.Stderr
 	stdout, _ := cmd.StdoutPipe()
 	defer stdout.Close()
@@ -227,7 +269,7 @@ func updateDeploymentStatus(c *cli.Context, r *ObjectResource) error {
 	return nil
 }
 
-func newKubeCmd(c *cli.Context, args []string) *exec.Cmd {
+func newKubeCmd(c *cli.Context, args []string) (*exec.Cmd, error) {
 	kube := "kubectl"
 	if c.IsSet("namespace") {
 		args = append([]string{"--namespace=" + c.String("namespace")}, args...)
@@ -238,6 +280,15 @@ func newKubeCmd(c *cli.Context, args []string) *exec.Cmd {
 	if c.IsSet("kube-token") {
 		args = append([]string{"--token=" + c.String("kube-token")}, args...)
 	}
+	if c.IsSet("certificate-authority-data") {
+		if err := createCertificateAuthority(c.String("certificate-authority-file"), c.String("certificate-authority-data")); err != nil {
+			return nil, err
+		}
+		args = append([]string{"--certificate-authority=" + c.String("certificate-authority-file")}, args...)
+	}
+	if c.IsSet("certificate-authority") {
+		args = append([]string{"--certificate-authority=" + c.String("certificate-authority")}, args...)
+	}
 	if c.IsSet("insecure-skip-tls-verify") {
 		args = append([]string{"--insecure-skip-tls-verify"}, args...)
 	}
@@ -245,5 +296,55 @@ func newKubeCmd(c *cli.Context, args []string) *exec.Cmd {
 		args = append([]string{"--server=" + c.String("kube-server")}, args...)
 	}
 
-	return exec.Command(kube, args...)
+	return exec.Command(kube, args...), nil
+}
+
+// listDirectory returns a recursive list of all file under an directory, or an error
+func listDirectory(path string) ([]string, error) {
+	var list []string
+	err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+		if !info.IsDir() {
+			// We only support yaml at the moment, so we might has weel filter on it
+			switch filepath.Ext(path) {
+			case ".yaml":
+				fallthrough
+			case ".yml":
+				list = append(list, path)
+			}
+		}
+		return nil
+	})
+
+	return list, err
+}
+
+// createCertificateAuthority creates if required a certificate-authority file
+func createCertificateAuthority(path, content string) error {
+	// This hardcoded certificate authority
+	if found, err := filesExists(path); err != nil {
+		return err
+	} else if found {
+		return nil
+	}
+
+	// Write the file to disk
+	if err := ioutil.WriteFile(path, []byte(content), 0444); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// fileExists checks if a file exists already
+func filesExists(path string) (bool, error) {
+	stat, err := os.Stat(path)
+	if err != nil {
+		if err != nil && os.IsNotExist(err) {
+			return false, nil
+		}
+
+		return false, err
+	}
+
+	return !stat.IsDir(), nil
 }
