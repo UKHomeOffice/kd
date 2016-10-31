@@ -16,6 +16,9 @@ Note that kd can be run with docker, [check here for the latest image tags](http
 ```bash
 docker run quay.io/ukhomeofficedigital/kd:latest --help
 ```
+## Installation
+
+Please download the required binary file from the [releases page](https://github.com/UKHomeOffice/kd/releases)
 
 ## Getting Started
 
