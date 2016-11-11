@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+
+show_help()
+{
+cat << EOF
+This script will gracefully replace all the nodes on a DaemonSet with minimal downtime.
+
+OPTIONS:
+   -n,--namespace              Define the namespace.[required]
+   -s,--kube-server            Kubernetes Server. [required]
+   -t,--kube-token             Kubernetes token. [required]
+   -x,--selector               Selector to find DaemonSet eg: name=test-agent. [required]
+   -r,--retries                number of retries before failing, each retry waits 10 secs.(default=10)
+   -f,--file                   file to apply the new daemonset to. [required]
+   -d,--debug                  turn on debug
+   -hm--help                   Show help.
+
+EOF
+}
+RETRIES=10
+
+#show_help
+if [ $# = 0 ]; then
+  echo "--WARNING: You may have left an argument blank. Double check your command." 
+  show_help
+  exit 1
+fi
+while [[ $# -gt 0 ]]; do
+  opt="$1"
+  shift;
+  current_arg="$1"
+  if [[ "$current_arg" =~ ^-{1,2}.* ]]; then
+    echo "--WARNING: You may have left an argument blank. Double check your command." 
+    show_help
+  fi
+  case "$opt" in
+    -n | --namespace ) NAMESPACE=$1; shift ;;
+    -s | --kube-server ) KUBE_SERVER=$1; shift ;;
+    -t | --kube-token ) KUBE_TOKEN=$1; shift ;;
+    -x | --selector ) SELECTOR=$1; shift ;;
+    -r | --retries ) RETRIES=$1; shift ;;
+    -f | --file ) FILE=$1; shift ;;
+    -d | --debug ) set -x; shift ;;
+    * ) show_help exit 1 ;;
+  esac
+done
+#replace the daemonset config
+if [[ -z $FILE || -z $NAMESPACE || -z $KUBE_SERVER || $KUBE_TOKEN || $SELECTOR ]]; then
+  echo '--Error you are missing some variables'
+  show_help
+  exit 1
+fi
+kd --insecure-skip-tls-verify --namespace=$NAMESPACE --kube-server=$KUBE_SERVER --retries $RETRIES --kube-token=$KUBE_TOKEN --file $FILE &> /dev/null
+if [ $? -ne 0 ]; then
+    echo "--KD failed to update config, exiting"
+    exit 1
+else 
+    echo "--Successfully updated Daemonset config"
+fi
+pods=$(kubectl --namespace=$NAMESPACE get pod --selector=$SELECTOR --output=jsonpath={.items..metadata.name})
+list=($pods)
+numberOfPods=${#list[@]}
+for pod in ${list[@]};
+do
+  kubectl --namespace=$NAMESPACE delete pod $pod &> /dev/null
+  echo "--Deleted Pod $pod"
+  readyPods=$(kubectl --namespace=$NAMESPACE get pod --selector=$SELECTOR --output=jsonpath='{range .items[*]}{@.metadata.name}:{range @.status.conditions[*]}{@.type}={@.status};{end}{end}' | grep -o Ready=True)
+  numberOfReadyPods=$(echo "$readyPods" | wc -l)
+  timeout=0
+    while [ $numberOfPods -gt $numberOfReadyPods ];
+     do  
+      if [ $RETRIES -gt $timeout ]; then
+        echo "--Pod $pod not ready sleeping for 10 seconds"
+        sleep 10
+        readyPods=$(kubectl --namespace=$NAMESPACE get pod --selector=$SELECTOR --output=jsonpath='{range .items[*]}{@.metadata.name}:{range @.status.conditions[*]}{@.type}={@.status};{end}{end}' | grep -o Ready=True)
+        numberOfReadyPods=$(echo "$readyPods" | wc -l)
+        timeout=$(( timeout+1 ))
+      else
+        echo "--ERROR Container Timed out!"
+        kubectl --namespace=$NAMESPACE describe pod $pod
+        exit 0
+      fi        	
+     done
+  echo "--Pod $pod Successfully Refreshed"    
+done
+echo "-- DaemonSet Successfully Deployed"
