@@ -116,7 +116,9 @@ func main() {
 
 		return nil
 	}
-	app.Run(os.Args)
+	if err := app.Run(os.Args); err != nil {
+		logError.Fatal(err)
+	}
 }
 
 func run(c *cli.Context) error {
@@ -125,7 +127,7 @@ func run(c *cli.Context) error {
 		return errors.New("no kubernetes resource files specified")
 	}
 
-	// Check if all files exist first - fail early or building up a list of files
+	// Check if all files exist first - fail early on building up a list of files
 	var list []string
 	for _, fn := range c.StringSlice("file") {
 		stat, err := os.Stat(fn)
@@ -146,14 +148,6 @@ func run(c *cli.Context) error {
 
 	// Iterate the list of files and deploy resources
 	for _, fn := range list {
-		f, err := os.Open(fn)
-		if err != nil {
-			return err
-		}
-		// TODO: should probably move this section into a named or anonymous method,
-		// as deferring in a loop bad practice
-		defer f.Close()
-
 		resource := ObjectResource{FileName: fn}
 		if err := render(&resource, envToMap(), c.Bool("debug")); err != nil {
 			return err
@@ -171,7 +165,6 @@ func run(c *cli.Context) error {
 
 func deploy(c *cli.Context, r *ObjectResource) error {
 	args := []string{"apply", "-f", "-"}
-
 	cmd, err := newKubeCmd(c, args)
 	if err != nil {
 		return err
@@ -189,9 +182,10 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 	cmd.Stdout = &outbuf
 	cmd.Stderr = &errbuf
 
-	stdin.Write(r.Template)
-	stdin.Close()
-	if err != nil {
+	if _, err := stdin.Write(r.Template); err != nil {
+		return err
+	}
+	if err := stdin.Close(); err != nil {
 		return err
 	}
 	logInfo.Printf("deploying %s/%s", strings.ToLower(r.Kind), r.Name)
@@ -255,7 +249,6 @@ func updateDeploymentStatus(c *cli.Context, r *ObjectResource) error {
 	}
 	cmd.Stderr = os.Stderr
 	stdout, _ := cmd.StdoutPipe()
-	defer stdout.Close()
 	if err := cmd.Start(); err != nil {
 		return err
 	}
@@ -299,12 +292,12 @@ func newKubeCmd(c *cli.Context, args []string) (*exec.Cmd, error) {
 	return exec.Command(kube, args...), nil
 }
 
-// listDirectory returns a recursive list of all file under an directory, or an error
+// listDirectory returns a recursive list of all files under a directory, or an error
 func listDirectory(path string) ([]string, error) {
 	var list []string
 	err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 		if !info.IsDir() {
-			// We only support yaml at the moment, so we might has weel filter on it
+			// We only support yaml at the moment, so we might well filter on it
 			switch filepath.Ext(path) {
 			case ".yaml":
 				fallthrough
