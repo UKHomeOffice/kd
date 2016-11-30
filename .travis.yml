@@ -12,14 +12,14 @@ go: 1.6
 install: true
 script:
   - go test -v -cover
-# Only go build binaries when branch is master and not a PR
-  - if ([[ ${TRAVIS_BRANCH} == "master" ]] && [[ ${TRAVIS_PULL_REQUEST} != "true" ]]) || [[ -n ${TRAVIS_TAG} ]]; then
-    mkdir -p bin;
-    GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=${TRAVIS_TAG:-git+${TRAVIS_COMMIT}}" -o bin/kd_linux_amd64;
-    GOOS=linux GOARCH=386 CGO_ENABLED=0 go build -ldflags "-X main.Version=${TRAVIS_TAG:-git+${TRAVIS_COMMIT}}" -o bin/kd_linux_386;
-    GOOS=linux GOARCH=arm CGO_ENABLED=0 go build -ldflags "-X main.Version=${TRAVIS_TAG:-git+${TRAVIS_COMMIT}}" -o bin/kd_linux_arm;
-    GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=${TRAVIS_TAG:-git+${TRAVIS_COMMIT}}" -o bin/kd_darwin_amd64;
-    GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=${TRAVIS_TAG:-git+${TRAVIS_COMMIT}}" -o bin/kd_windows_amd64.exe;
+  - go vet -x
+  - mkdir -p bin
+  - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=${TRAVIS_TAG:-git+${TRAVIS_COMMIT}}" -o bin/kd_linux_amd64
+  - GOOS=linux GOARCH=386 CGO_ENABLED=0 go build -ldflags "-X main.Version=${TRAVIS_TAG:-git+${TRAVIS_COMMIT}}" -o bin/kd_linux_386
+  - GOOS=linux GOARCH=arm CGO_ENABLED=0 go build -ldflags "-X main.Version=${TRAVIS_TAG:-git+${TRAVIS_COMMIT}}" -o bin/kd_linux_arm
+  - GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=${TRAVIS_TAG:-git+${TRAVIS_COMMIT}}" -o bin/kd_darwin_amd64
+  - GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=${TRAVIS_TAG:-git+${TRAVIS_COMMIT}}" -o bin/kd_windows_amd64.exe
+  - if ([[ ${TRAVIS_BRANCH} == "master" ]] && [[ ${TRAVIS_EVENT_TYPE} != "push" ]]) || [[ -n ${TRAVIS_TAG} ]]; then
     docker login -u "ukhomeofficedigital+kubernetes_deploy_kd" -p ${DOCKER_PASSWORD} quay.io;
     docker build -t quay.io/ukhomeofficedigital/kd:${TRAVIS_TAG:-latest} .;
     docker push quay.io/ukhomeofficedigital/kd:${TRAVIS_TAG:-latest};
