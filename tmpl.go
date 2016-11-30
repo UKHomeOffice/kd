@@ -32,7 +32,7 @@ func render(r *ObjectResource, vars map[string]string, debug bool) error {
 func envToMap() map[string]string {
 	m := map[string]string{}
 	for _, n := range os.Environ() {
-		parts := strings.Split(n, "=")
+		parts := strings.SplitN(n, "=", 2)
 		m[parts[0]] = parts[1]
 	}
 	return m
