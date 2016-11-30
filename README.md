@@ -124,6 +124,14 @@ mkdir -p bin
 GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=dev+git" -o bin/kd_linux_amd64
 ```
 
+You can also build `kd` in a docker container:
+
+```bash
+docker run --rm -v $PWD:/go/src/github.com/UKHomeOffice/kd -w /go/src/github.com/UKHomeOffice/kd -ti golang:1.6 bash
+cd /go/src/UKHomeOffice/kd
+go get
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=dev+git" -o bin/kd_linux_amd64
+```
 
 ## Release process
 
