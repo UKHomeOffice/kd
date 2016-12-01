@@ -110,7 +110,7 @@ func main() {
 
 	app.Action = func(cx *cli.Context) error {
 		if err := run(cx); err != nil {
-			logError.Println(err)
+			logError.Print(err)
 			return cli.NewExitError("", 1)
 		}
 
@@ -190,6 +190,9 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 	}
 	logInfo.Printf("deploying %s/%s", strings.ToLower(r.Kind), r.Name)
 	if err = cmd.Run(); err != nil {
+		if errbuf.Len() > 0 {
+			return fmt.Errorf(errbuf.String())
+		}
 		return err
 	}
 	logInfo.Print(outbuf.String())
