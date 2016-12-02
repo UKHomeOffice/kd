@@ -26,14 +26,15 @@ script:
     fi
 deploy:
   provider: releases
+  skip_cleanup: true
   api_key:
     secure: JdURCNO9Q7I1bl4akrEBT03RfPd5WYVZOSiyt+X9sSvbutpUe5AsrFUjnPwNYj5F0N7abtAX+O938SimIrNcUJnzVvB+RbOUHmhNQda9Qjri71yyj1M/IDS/KSenfTsXI+S5JS1bGAAIcUPTktYQqm+4veLmeLpyWUdaZcb1II2eGDMsUBSr1T3dLjZ6oNzO82V2YCwjBvaldJAroNiOQr5pAcjloOIwKkQWChHBzQwUkFQP/CbIMh17d0WRHQ77sscLiQtUWsC4VsZOybQK+q85vPjFid7asmHWM1UoAeKmWcu6IimVs0Yo9IPj3vVIK708zPs6XNJHCHcBUjJDSDCQyLLx8PFc105YOLwyKqWEAPr/okE62vtR4k91khwUl6NEM08ACqm7mnQiQvO2NEyEbnEDoQYTxBD1GyrLQ93NeVTbK7hCPdoNXHikbfwmWMqPANYCFF4b1jb+dYiREqRvn97zNxTVw/fDk5BVS4uFMxfiyECivXmSs0IXEOpxU8uvOJ6aJxzy+C9HMQrFPwUEqRajepqmhgoR1CTXlwrLNK7zull5Fa/DMYKOrLuJswXG+ARk9HMRHEK5b0ys8WxYIMxE9Sy3yUYb5qa1RfVdDOU3XtBAbP/PzvXDTGFAzrFxBbJPKaqv6pMGPrDHgqpCXgYEt11vnSzJPgYIEgg=
   file:
-    - bin/kd_linux_amd64
-    - bin/kd_linux_386
-    - bin/kd_linux_arm
-    - bin/kd_darwin_amd64
-    - bin/kd_windows_amd64.exe
+    - ${TRAVIS_BUILD_DIR}/bin/kd_linux_amd64
+    - ${TRAVIS_BUILD_DIR}/bin/kd_linux_386
+    - ${TRAVIS_BUILD_DIR}/bin/kd_linux_arm
+    - ${TRAVIS_BUILD_DIR}/bin/kd_darwin_amd64
+    - ${TRAVIS_BUILD_DIR}/bin/kd_windows_amd64.exe
   on:
     tags: true
     repo: UKHomeOffice/kd
