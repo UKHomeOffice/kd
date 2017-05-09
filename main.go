@@ -9,7 +9,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/urfave/cli"
@@ -128,7 +130,7 @@ func run(c *cli.Context) error {
 	}
 
 	// Check if all files exist first - fail early on building up a list of files
-	var list []string
+	var files []string
 	for _, fn := range c.StringSlice("file") {
 		stat, err := os.Stat(fn)
 		if err != nil {
@@ -140,27 +142,71 @@ func run(c *cli.Context) error {
 			if err != nil {
 				return err
 			}
-			list = append(list, files...)
+			files = append(files, files...)
 		default:
-			list = append(list, fn)
+			files = append(files, fn)
 		}
 	}
 
-	// Iterate the list of files and deploy resources
-	for _, fn := range list {
-		resource := ObjectResource{FileName: fn}
-		if err := render(&resource, envToMap(), c.Bool("debug")); err != nil {
+	// Iterate the list of files and add rendered templates to resources list - fail early.
+	resources := []*ObjectResource{}
+	for _, fn := range files {
+		data, err := ioutil.ReadFile(fn)
+		if err != nil {
 			return err
 		}
-		if err := yaml.Unmarshal(resource.Template, &resource); err != nil {
+
+		rendered, err := render(string(data), envToMap())
+		if err != nil {
 			return err
 		}
-		if err := deploy(c, &resource); err != nil {
-			return err
+
+		for _, d := range splitYamlDocs(rendered) {
+			r := ObjectResource{FileName: fn, Template: []byte(d)}
+			resources = append(resources, &r)
 		}
 	}
 
+	for _, r := range resources {
+		if err := yaml.Unmarshal(r.Template, &r); err != nil {
+			return err
+		}
+		if err := deploy(c, r); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+func render(tmpl string, vars map[string]string) (string, error) {
+	t := template.Must(template.New("template").Parse(tmpl))
+	t.Option("missingkey=error")
+	var b bytes.Buffer
+	if err := t.Execute(&b, vars); err != nil {
+		return b.String(), err
+	}
+	return b.String(), nil
+}
+
+func envToMap() map[string]string {
+	m := map[string]string{}
+	for _, n := range os.Environ() {
+		parts := strings.SplitN(n, "=", 2)
+		m[parts[0]] = parts[1]
+	}
+	return m
+}
+
+// splitYamlDocs splits a yaml string into separate yaml documents.
+func splitYamlDocs(data string) []string {
+	r := regexp.MustCompile(`(?m)^---\n`)
+	s := r.Split(data, -1)
+	for i, item := range s {
+		if item == "" {
+			s = append(s[:i], s[i+1:]...)
+		}
+	}
+	return s
 }
 
 func deploy(c *cli.Context, r *ObjectResource) error {
