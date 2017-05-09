@@ -7,10 +7,12 @@ env:
     - secure: "DqrBa11t057wK6mEsojA78YUrGiXvqPnyhRtcQuccKf+IXbsj4l+nUw1luJxRxUryrmMscpbkesDI7PFUvXv0n45aIglhOBDZ82a0vOu+ASC4ox0VVNaB9aUtzv+391E9JtKKvn+jGULj+zPEDc6kqOOHE+L9jhtOzmMiQkphPftR742S4PN6LJyaCcpaaEvTH+WyKPOU5h8MWwEP0jAKKzMeVWCgxFot6QTVd4z6EM+mF8tcXU837seTk/zrSg+4YIob/Qw71FHOTCBpKgJQMcN7VfyD7JmBqrNnG/9ViVCiwEidjMS0JetbZ0xhM8FIz/ddCkoZFrF22NJbiQcXSVzTmDOaPloAnRgmnLzAYswXsmf1akOs5Xls6yVKxry6dhYeNZldP6VIiq1lWRmEz2sTEQzlAODNXa1U4KhgU0W1L1ylUwFDb++jYEGt/Zu+5F7Q4bZu9IRxXgknNdIfatbgOTLudGTmLh622Gidics1Dh0oLx0Y7OUX9simWPwmMAnPt4w1mykb2AWclhug5pGYt1Zw6mAlanqCUdqqQg4N0ZnZjZ4nwza1wZiNRjam/x6pbEE4gtiwkVNMRpRojaMEBjobq1JmYPhAD9Xgbxh1JxUXfHijh2hS5n8KbqhxuaEjR0b+2/2IIS3pXKR9QokOxqdRWg42S1eu2Ce98U="
 
 language: go
-go: 1.6
+go: 1.8
 
-install: true
+install:
+  - curl https://glide.sh/get | sh
 script:
+  - glide install
   - go test -v -cover
   - go vet -x
   - mkdir -p bin
