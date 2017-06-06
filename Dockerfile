@@ -1,7 +1,7 @@
 FROM alpine:3.4
 
 RUN apk upgrade --no-cache
-RUN apk add --no-cache ca-certificates openssl bash
+RUN apk add --no-cache ca-certificates openssl bash util-linux
 
 RUN wget https://storage.googleapis.com/kubernetes-release/release/v1.5.6/bin/linux/amd64/kubectl \
   -O /usr/bin/kubectl && chmod +x /usr/bin/kubectl
