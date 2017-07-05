@@ -108,6 +108,7 @@ GLOBAL OPTIONS:
    --retries value                      number of deployment status check retries (default: 10) [$RETRIES, $PLUGIN_RETRIES]
    --check-interval value               deployment status check interval (default: 15s) [$CHECK_INTERVAL, $PLUGIN_CHECK_INTERVAL]
    --help, -h                           show help
+   --timeout -T                         timeout before kd fails deployment (default: 3m) [$TIMEOUT, $PLUGIN_TIMEOUT]
    --version, -v                        print the version
 ```
 
