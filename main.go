@@ -138,11 +138,11 @@ func run(c *cli.Context) error {
 		}
 		switch stat.IsDir() {
 		case true:
-			files, err := listDirectory(fn)
+			fileList, err := listDirectory(fn)
 			if err != nil {
 				return err
 			}
-			files = append(files, files...)
+			files = append(files, fileList...)
 		default:
 			files = append(files, fn)
 		}
