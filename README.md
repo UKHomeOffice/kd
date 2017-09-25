@@ -86,13 +86,13 @@ NAME:
 
 USAGE:
    kd [global options] command [command options] [arguments...]
-   
-VERSION:
-   v0.2.0
 
-AUTHOR(S):
-   Vaidas Jablonskis <jablonskis@gmail.com> 
-   
+VERSION:
+   v0.3.0
+
+AUTHOR:
+   Vaidas Jablonskis <jablonskis@gmail.com>
+
 COMMANDS:
      help, h  Shows a list of commands or help for one command
 
@@ -104,11 +104,13 @@ GLOBAL OPTIONS:
    --context CONTEXT, -c CONTEXT        kube config CONTEXT [$KUBE_CONTEXT, $PLUGIN_CONTEXT]
    --namespace NAMESPACE, -n NAMESPACE  kubernetes NAMESPACE [$KUBE_NAMESPACE, $PLUGIN_KUBE_NAMESPACE]
    --fail-superseded                    fail deployment if it has been superseded by another deployment. WARNING: there are some bugs in kubernetes. [$FAIL_SUPERSEDED, $PLUGIN_FAIL_SUPERSEDED]
-   --file value, -f value               list of kubernetes resources FILE [$FILES, $PLUGIN_FILES]
-   --retries value                      number of deployment status check retries (default: 10) [$RETRIES, $PLUGIN_RETRIES]
-   --check-interval value               deployment status check interval (default: 15s) [$CHECK_INTERVAL, $PLUGIN_CHECK_INTERVAL]
+   --certificate-authority PATH         the path to a file containing the CA for kubernetes API PATH [$KUBE_CERTIFICATE_AUTHORITY, $PLUGIN_KUBE_CERTIFICATE_AUHORITY]
+   --certificate-authority-data PATH    the certificate authority data for the kubernetes API PATH [$KUBE_CERTIFICATE_AUTHORITY_DATA, $PLUGIN_KUBE_CERTIFICATE_AUHORITY_DATA]
+   --certificate-authority-file value   the path to file the certificate authority file from certifacte-authority-data option (default: "/tmp/kube-ca.pem")
+   --file PATH, -f PATH                 the path to a file or directory containing kubernetes resource/s PATH [$FILES, $PLUGIN_FILES]
+   --timeout TIMEOUT, -T TIMEOUT        the amount of time to wait for a successful deployment TIMEOUT (default: 3m0s) [$TIMEOUT, $PLUGIN_TIMEOUT]
+   --check-interval INTERVAL            deployment status check interval INTERVAL (default: 1s) [$CHECK_INTERVAL, $PLUGIN_CHECK_INTERVAL]
    --help, -h                           show help
-   --timeout -T                         timeout before kd fails deployment (default: 3m) [$TIMEOUT, $PLUGIN_TIMEOUT]
    --version, -v                        print the version
 ```
 
