@@ -73,6 +73,40 @@ $ kd --context=mykube --namespace=testing --file nginx-deployment.yaml
 
 You can fail an ongoing deployment if there's been a new deployment by adding `--fail-superseded` flag.
 
+
+## Templating
+
+### split
+
+`split` function is go's `strings.Split()`, it returns a `[]string`. A range function
+can also be used to iterate over returned list.
+
+```yaml
+# split.yaml
+---
+apiVersion: v1
+data:
+  foo: {{ split .LIST " "}}
+kind: ConfigMap
+metadata:
+  name: list
+```
+
+```
+$ export LIST="one,two,three"
+$ ./kd -f split.yaml -- --dry-run -o yaml
+[INFO] 2017/10/18 15:08:09 main.go:241: deploying configmap/list
+[INFO] 2017/10/18 15:08:09 main.go:248: apiVersion: v1
+data:
+  foo:
+  - one
+  - two
+  - three
+kind: ConfigMap
+metadata:
+  name: list
+```
+
 ## Configuration
 
 Configuration can be provided via cli flags and arguments as well as

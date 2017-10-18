@@ -179,7 +179,11 @@ func run(c *cli.Context) error {
 }
 
 func render(tmpl string, vars map[string]string) (string, error) {
-	t := template.Must(template.New("template").Parse(tmpl))
+	fm := template.FuncMap{
+		"split": strings.Split,
+	}
+
+	t := template.Must(template.New("template").Funcs(fm).Parse(tmpl))
 	t.Option("missingkey=error")
 	var b bytes.Buffer
 	if err := t.Execute(&b, vars); err != nil {
