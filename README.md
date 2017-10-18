@@ -112,6 +112,9 @@ metadata:
 Configuration can be provided via cli flags and arguments as well as
 environment variables.
 
+It supports end of flags `--` parameter, any flags or arguments that are
+specified after `--` will be passed onto kubectl.
+
 ```bash
 $ kd --help
 
