@@ -179,7 +179,11 @@ func run(c *cli.Context) error {
 }
 
 func render(tmpl string, vars map[string]string) (string, error) {
-	t := template.Must(template.New("template").Parse(tmpl))
+	fm := template.FuncMap{
+		"split": strings.Split,
+	}
+
+	t := template.Must(template.New("template").Funcs(fm).Parse(tmpl))
 	t.Option("missingkey=error")
 	var b bytes.Buffer
 	if err := t.Execute(&b, vars); err != nil {
@@ -338,7 +342,27 @@ func newKubeCmd(c *cli.Context, args []string) (*exec.Cmd, error) {
 		args = append([]string{"--server=" + c.String("kube-server")}, args...)
 	}
 
+	flags, err := extraFlags(c)
+	if err != nil {
+		return nil, err
+	}
+	args = append(args, flags...)
+
 	return exec.Command(kube, args...), nil
+}
+
+func extraFlags(c *cli.Context) ([]string, error) {
+	var a []string
+
+	if c.NArg() < 1 {
+		return a, nil
+	}
+
+	if c.Args()[0] == "--" {
+		return c.Args()[1:], nil
+	}
+
+	return c.Args(), nil
 }
 
 // listDirectory returns a recursive list of all files under a directory, or an error
