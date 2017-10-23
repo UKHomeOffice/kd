@@ -239,6 +239,9 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 		return err
 	}
 	logInfo.Printf("deploying %s/%s", strings.ToLower(r.Kind), r.Name)
+	if c.Bool("debug") {
+		logDebug.Printf("Template:\n" + string(r.Template[:]))
+	}
 	if err = cmd.Run(); err != nil {
 		if errbuf.Len() > 0 {
 			return fmt.Errorf(errbuf.String())
