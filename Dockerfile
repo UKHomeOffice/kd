@@ -10,10 +10,4 @@ COPY bin/kd_linux_amd64 /bin/kd
 
 RUN chmod +x /bin/kd
 
-RUN set -x ; \
-    addgroup -S kd ; \
-    adduser -D -S -G kd kd && exit 0 ; exit 1
-
-USER kd
-
 ENTRYPOINT ["/bin/kd"]
