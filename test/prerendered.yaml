@@ -1,0 +1,7 @@
+--- 
+kind: ConfigMap
+metadata: 
+  name: list
+apiVersion: v1
+data: 
+  foo: {{.MY_LIST}}
