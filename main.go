@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"text/template"
 	"time"
 
 	"github.com/urfave/cli"
@@ -138,7 +137,7 @@ func run(c *cli.Context) error {
 		}
 		switch stat.IsDir() {
 		case true:
-			fileList, err := listDirectory(fn)
+			fileList, err := ListDirectory(fn)
 			if err != nil {
 				return err
 			}
@@ -156,7 +155,7 @@ func run(c *cli.Context) error {
 			return err
 		}
 
-		rendered, err := render(string(data), envToMap())
+		rendered, err := Render(string(data), EnvToMap())
 		if err != nil {
 			return err
 		}
@@ -178,21 +177,8 @@ func run(c *cli.Context) error {
 	return nil
 }
 
-func render(tmpl string, vars map[string]string) (string, error) {
-	fm := template.FuncMap{
-		"split": strings.Split,
-	}
-
-	t := template.Must(template.New("template").Funcs(fm).Parse(tmpl))
-	t.Option("missingkey=error")
-	var b bytes.Buffer
-	if err := t.Execute(&b, vars); err != nil {
-		return b.String(), err
-	}
-	return b.String(), nil
-}
-
-func envToMap() map[string]string {
+// EnvToMap - creates a map of all environment variables
+func EnvToMap() map[string]string {
 	m := map[string]string{}
 	for _, n := range os.Environ() {
 		parts := strings.SplitN(n, "=", 2)
@@ -365,8 +351,8 @@ func extraFlags(c *cli.Context) ([]string, error) {
 	return c.Args(), nil
 }
 
-// listDirectory returns a recursive list of all files under a directory, or an error
-func listDirectory(path string) ([]string, error) {
+// ListDirectory returns a recursive list of all files under a directory, or an error
+func ListDirectory(path string) ([]string, error) {
 	var list []string
 	err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 		if !info.IsDir() {
@@ -387,7 +373,7 @@ func listDirectory(path string) ([]string, error) {
 // createCertificateAuthority creates if required a certificate-authority file
 func createCertificateAuthority(path, content string) error {
 	// This hardcoded certificate authority
-	if found, err := filesExists(path); err != nil {
+	if found, err := FilesExists(path); err != nil {
 		return err
 	} else if found {
 		return nil
@@ -401,8 +387,8 @@ func createCertificateAuthority(path, content string) error {
 	return nil
 }
 
-// fileExists checks if a file exists already
-func filesExists(path string) (bool, error) {
+// FilesExists checks if a file exists already
+func FilesExists(path string) (bool, error) {
 	stat, err := os.Stat(path)
 	if err != nil {
 		if err != nil && os.IsNotExist(err) {
