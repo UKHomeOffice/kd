@@ -7,6 +7,7 @@ type ObjectResource struct {
 	Template         []byte `yaml:"-"`
 	FileName         string `yaml:"-"`
 	DeploymentStatus `yaml:"status,omitempty"`
+	ObjectSpec       `yaml:"spec"`
 }
 
 // ObjectMeta is a resource metadata that all persisted resources must have
@@ -24,7 +25,7 @@ type ObjectMeta struct {
 	Namespace string `yaml:"namespace,omitempty"`
 }
 
-// DeploymentStatus is the most recently observed status of the Deployment.
+// DeploymentStatus is the most recently observed status of the Deployment / Statefulset.
 type DeploymentStatus struct {
 	// The generation observed by the deployment controller.
 	ObservedGeneration int64 `yaml:"observedGeneration,omitempty"`
@@ -40,4 +41,27 @@ type DeploymentStatus struct {
 
 	// Total number of unavailable pods targeted by this deployment.
 	UnavailableReplicas int32 `yaml:"unavailableReplicas,omitempty"`
+
+	// ReadyReplicas is the number of Pods created by the StatefulSet controller that have a Ready Condition.
+	ReadyReplicas int32 `yaml:"readyReplicas,omitempty"`
+
+	// CurrentRevision is the last revision completely deployed before any updates
+	CurrentRevision string `yaml:"currentRevision,omitempty"`
+
+	// UpdateRevision is the version currently being deployed. Will match CurrentRevision when complete.
+	UpdateRevision string `yaml:"updateRevision,omitempty"`
+}
+
+type ObjectSpec struct {
+	// UpdateStrategy indicates the StatefulSetUpdateStrategy that will be employed to update Pods in the StatefulSet when a revision is made to Template.
+	UpdateStrategy `yaml:"updateStrategy,omitempty"`
+
+	// Replicas indicates how many intended pods are required for a StatefulSet
+	Replicas int32 `yaml:"replicas,omitempty"`
+}
+
+// UpdateStrategy indicates the StatefulSetUpdateStrategy that will be employed to update Pods in the StatefulSet when a revision is made to Template.
+type UpdateStrategy struct {
+	// Type is the choosen UpdateStrategy which can be RollingUpdate
+	Type string `yaml:"type,omitempty"`
 }

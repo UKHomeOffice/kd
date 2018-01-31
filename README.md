@@ -9,6 +9,7 @@ This is a very minimalistic tool for deploying kubernetes resources.
 - Go template engine support
 - Supports any kubernetes resource type
 - Polls deployment resources for completion
+- Polls statefulset resources (only with updateStrategy type set to [RollingUpdates](https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/#rolling-update)).
 
 ## Running with Docker
 Note that kd can be run with docker, [check here for the latest image tags](https://quay.io/repository/ukhomeofficedigital/kd?tab=tags)
@@ -190,4 +191,3 @@ submitting a patch.
 ## Author
 
 Vaidas Jablonskis [vaijab](https://github.com/vaijab)
-
