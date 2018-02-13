@@ -108,6 +108,42 @@ metadata:
   name: list
 ```
 
+### Render config
+
+`file` function will locate and render a configuration file from your repo. A full path will need to be specified, you can run this in drone by using `workspace:` and a base directory (http://docs.drone.io/workspace/#app-drawer). Here's an example:
+
+```yaml
+# file.yaml
+---
+apiVersion: v1
+data:
+  foo:
+{{ file .BAR }}
+kind: ConfigMap
+metadata:
+  name: list
+```
+
+```
+$ cat <<EOF > config.yaml
+  - one
+  - two
+  - three
+EOF
+$ export BAR=${PWD}/config.yaml
+$ ./kd -f file.yaml -- --dry-run -o yaml
+[INFO] 2017/10/18 15:08:09 main.go:241: deploying configmap/list
+[INFO] 2017/10/18 15:08:09 main.go:248: apiVersion: v1
+data:
+  foo:
+  - one
+  - two
+  - three
+kind: ConfigMap
+metadata:
+  name: list
+```
+
 ## Configuration
 
 Configuration can be provided via cli flags and arguments as well as
