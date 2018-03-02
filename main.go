@@ -182,6 +182,9 @@ func run(c *cli.Context) error {
 
 func render(tmpl string, vars map[string]string) (string, error) {
 	fm := template.FuncMap{
+		"contains": strings.Contains,
+		"hasPrefix": strings.HasPrefix,
+		"hasSuffix": strings.HasSuffix,
 		"split": strings.Split,
 	}
 
