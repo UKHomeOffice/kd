@@ -25,7 +25,7 @@ type ObjectMeta struct {
 	Namespace string `yaml:"namespace,omitempty"`
 }
 
-// DeploymentStatus is the most recently observed status of the Deployment / Statefulset.
+// DeploymentStatus is the most recently observed status of the Deployment / Statefulset / DaemonSets.
 type DeploymentStatus struct {
 	// The generation observed by the deployment controller.
 	ObservedGeneration int64 `yaml:"observedGeneration,omitempty"`
@@ -50,6 +50,30 @@ type DeploymentStatus struct {
 
 	// UpdateRevision is the version currently being deployed. Will match CurrentRevision when complete.
 	UpdateRevision string `yaml:"updateRevision,omitempty"`
+
+	// Start: Daemonset statuses
+	// The number of nodes that are running at least 1 daemon pod and are supposed to run the daemon pod
+	CurrentNumberScheduled int32 `yaml:"currentNumberScheduled,omitempty"`
+
+	// The total number of nodes that should be running the daemon pod (including nodes correctly running the daemon pod)
+	DesiredNumberScheduled int32 `yaml:"desiredNumberScheduled,omitempty"`
+
+	// The number of nodes that should be running the daemon pod and have one or more of the daemon pod running and available (ready for at least spec.minReadySeconds)
+	NumberAvailable int32 `yaml:"numberAvailable,omitempty"`
+
+	// The number of nodes that are running the daemon pod, but are not supposed to run the daemon pod
+	NumberMisscheduled int32 `yaml:"numberMisscheduled,omitempty"`
+
+	// The number of nodes that should be running the daemon pod and have one or more of the daemon pod running and ready.
+	NumberReady int32 `yaml:"numberReady,omitempty"`
+
+	// The number of nodes that should be running the daemon pod and have none of the daemon pod running and available (ready for at least spec.minReadySeconds)
+	NumberUnavailable int32 `yaml:"numberUnavailable,omitempty"`
+
+	// The total number of nodes that are running updated daemon pod
+	UpdatedNumberScheduled int32 `yaml:"updatedNumberScheduled,omitempty"`
+	// End: Daemonset statuses
+
 }
 
 type ObjectSpec struct {
