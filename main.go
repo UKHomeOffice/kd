@@ -256,6 +256,8 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 		return watchDeployment(c, r)
 	case "StatefulSet":
 		return watchStatefulSet(c, r)
+	case "DaemonSet":
+		return watchDaemonSet(c, r)
 	}
 	return nil
 }
@@ -353,6 +355,59 @@ func watchStatefulSet(c *cli.Context, r *ObjectResource) error {
 			// Fail the deployment in case another deployment has started
 			if og != r.DeploymentStatus.ObservedGeneration && c.Bool("fail-superseded") {
 				return fmt.Errorf("statefulset update failed. It has been superseded by another update")
+			}
+		}
+	}
+}
+
+func watchDaemonSet(c *cli.Context, r *ObjectResource) error {
+	if c.Bool("debug") {
+		logDebug.Printf("sleeping %d seconds before checking DaemonSet status for the first time", DeployDelaySeconds)
+	}
+	time.Sleep(DeployDelaySeconds * time.Second)
+
+	if err := updateDeploymentStatus(c, r); err != nil {
+		return err
+	}
+
+	if r.ObjectSpec.UpdateStrategy.Type != "RollingUpdate" {
+		if c.Bool("debug") {
+			logDebug.Printf("Only DaemonSets with type of RollingUpdate will be watched for completion")
+		}
+		return nil
+	}
+
+	ticker := time.NewTicker(c.Duration("check-interval"))
+	timeout := time.After(c.Duration("timeout"))
+
+	og := r.DeploymentStatus.ObservedGeneration
+
+	for {
+		select {
+		case <-timeout:
+			return fmt.Errorf("DaemonSet rolling update %q timed out after %s", r.Name, c.Duration("timeout").String())
+		case <-ticker.C:
+			r.DeploymentStatus = DeploymentStatus{}
+			// @TODO should a one-off error (perhaps network issue) cause us to completly fail?
+			if err := updateDeploymentStatus(c, r); err != nil {
+				return err
+			}
+			if c.Bool("debug") {
+				logDebug.Printf("fetching DaemonSet status: %+v", r.DeploymentStatus)
+			}
+
+			if (r.DeploymentStatus.DesiredNumberScheduled == r.DeploymentStatus.NumberAvailable) &&
+			(r.DeploymentStatus.UpdatedNumberScheduled == r.DeploymentStatus.DesiredNumberScheduled) {
+				logInfo.Printf("DaemonSet %q is complete. Available replicas: %d\n",
+					r.Name, r.DeploymentStatus.NumberAvailable)
+				return nil
+			}
+			logInfo.Printf("DaemonSet update %q in progress. Replicas to update: %d.\n",
+				r.Name, r.DeploymentStatus.DesiredNumberScheduled-r.DeploymentStatus.UpdatedNumberScheduled)
+
+			// Fail the deployment in case another deployment has started
+			if og != r.DeploymentStatus.ObservedGeneration && c.Bool("fail-superseded") {
+				return fmt.Errorf("DaemonSet update failed. It has been superseded by another update")
 			}
 		}
 	}
