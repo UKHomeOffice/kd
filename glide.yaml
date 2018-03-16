@@ -2,4 +2,6 @@ package: github.com/UKHomeOffice/kd
 import:
 - package: github.com/urfave/cli
   version: ^1.19.1
+- package: github.com/joho/godotenv
+  version: ^1.2.0
 - package: gopkg.in/yaml.v2

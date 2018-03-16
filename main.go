@@ -13,10 +13,12 @@ import (
 	"strings"
 	"text/template"
 	"time"
-
+	"github.com/joho/godotenv"
 	"github.com/urfave/cli"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
+
+const DeployDelaySeconds = 3
 
 var (
 	// Version is set at compile time, passing -ldflags "-X main.Version=<build version>"
@@ -60,6 +62,11 @@ func main() {
 			Name:   "kube-token, t",
 			Usage:  "kubernetes auth `TOKEN`",
 			EnvVar: "KUBE_TOKEN,PLUGIN_KUBE_TOKEN",
+		},
+		cli.StringFlag{
+			Name:   "config",
+			Usage:  "Env file location",
+			EnvVar: "CONFIG_FILE",
 		},
 		cli.StringFlag{
 			Name:   "context, c",
@@ -129,6 +136,14 @@ func run(c *cli.Context) error {
 		return errors.New("no kubernetes resource files specified")
 	}
 
+	// Load Environment file overrides into the OS Environment Scope
+	if c.IsSet("config") {
+		err := godotenv.Load(c.String("config"))
+		if err != nil {
+			return errors.New("Error loading .env file")
+		}
+	}
+
 	// Check if all files exist first - fail early on building up a list of files
 	var files []string
 	for _, fn := range c.StringSlice("file") {
@@ -180,6 +195,9 @@ func run(c *cli.Context) error {
 
 func render(tmpl string, vars map[string]string) (string, error) {
 	fm := template.FuncMap{
+		"contains": strings.Contains,
+		"hasPrefix": strings.HasPrefix,
+		"hasSuffix": strings.HasSuffix,
 		"split": strings.Split,
 	}
 
@@ -246,14 +264,22 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 		return err
 	}
 	logInfo.Print(outbuf.String())
-	if r.Kind != "Deployment" {
-		return nil
+	switch r.Kind {
+	case "Deployment":
+		return watchDeployment(c, r)
+	case "StatefulSet":
+		return watchStatefulSet(c, r)
+	case "DaemonSet":
+		return watchDaemonSet(c, r)
 	}
+	return nil
+}
 
+func watchDeployment(c *cli.Context, r *ObjectResource) error {
 	if c.Bool("debug") {
-		logDebug.Printf("sleeping 3 seconds before checking deployment status for the first time")
+		logDebug.Printf("sleeping %d seconds before checking deployment status for the first time", DeployDelaySeconds)
 	}
-	time.Sleep(3 * time.Second)
+	time.Sleep(DeployDelaySeconds * time.Second)
 
 	if err := updateDeploymentStatus(c, r); err != nil {
 		return err
@@ -294,8 +320,114 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 	}
 }
 
+func watchStatefulSet(c *cli.Context, r *ObjectResource) error {
+	if c.Bool("debug") {
+		logDebug.Printf("sleeping %d seconds before checking statefulset status for the first time", DeployDelaySeconds)
+	}
+	time.Sleep(DeployDelaySeconds * time.Second)
+
+	if err := updateDeploymentStatus(c, r); err != nil {
+		return err
+	}
+
+	if r.ObjectSpec.UpdateStrategy.Type != "RollingUpdate" {
+		if c.Bool("debug") {
+			logDebug.Printf("Only statefulset with type of RollingUpdate will be watched for completion")
+		}
+		return nil
+	}
+
+	ticker := time.NewTicker(c.Duration("check-interval"))
+	timeout := time.After(c.Duration("timeout"))
+
+	og := r.DeploymentStatus.ObservedGeneration
+
+	for {
+		select {
+		case <-timeout:
+			return fmt.Errorf("statefulset rolling update %q timed out after %s", r.Name, c.Duration("timeout").String())
+		case <-ticker.C:
+			r.DeploymentStatus = DeploymentStatus{}
+			// @TODO should a one-off error (perhaps network issue) cause us to completly fail?
+			if err := updateDeploymentStatus(c, r); err != nil {
+				return err
+			}
+			if c.Bool("debug") {
+				logDebug.Printf("fetching statefulset status: %+v", r.DeploymentStatus)
+			}
+
+			if (r.DeploymentStatus.ReadyReplicas == r.ObjectSpec.Replicas) &&
+				r.DeploymentStatus.CurrentRevision == r.DeploymentStatus.UpdateRevision {
+				logInfo.Printf("statefulset %q is complete. Available replicas: %d\n",
+					r.Name, r.DeploymentStatus.ReadyReplicas)
+				return nil
+			}
+			logInfo.Printf("statefulset update %q in progress. Unready replicas: %d.\n",
+				r.Name, r.ObjectSpec.Replicas-r.DeploymentStatus.ReadyReplicas)
+
+			// Fail the deployment in case another deployment has started
+			if og != r.DeploymentStatus.ObservedGeneration && c.Bool("fail-superseded") {
+				return fmt.Errorf("statefulset update failed. It has been superseded by another update")
+			}
+		}
+	}
+}
+
+func watchDaemonSet(c *cli.Context, r *ObjectResource) error {
+	if c.Bool("debug") {
+		logDebug.Printf("sleeping %d seconds before checking DaemonSet status for the first time", DeployDelaySeconds)
+	}
+	time.Sleep(DeployDelaySeconds * time.Second)
+
+	if err := updateDeploymentStatus(c, r); err != nil {
+		return err
+	}
+
+	if r.ObjectSpec.UpdateStrategy.Type != "RollingUpdate" {
+		if c.Bool("debug") {
+			logDebug.Printf("Only DaemonSets with type of RollingUpdate will be watched for completion")
+		}
+		return nil
+	}
+
+	ticker := time.NewTicker(c.Duration("check-interval"))
+	timeout := time.After(c.Duration("timeout"))
+
+	og := r.DeploymentStatus.ObservedGeneration
+
+	for {
+		select {
+		case <-timeout:
+			return fmt.Errorf("DaemonSet rolling update %q timed out after %s", r.Name, c.Duration("timeout").String())
+		case <-ticker.C:
+			r.DeploymentStatus = DeploymentStatus{}
+			// @TODO should a one-off error (perhaps network issue) cause us to completly fail?
+			if err := updateDeploymentStatus(c, r); err != nil {
+				return err
+			}
+			if c.Bool("debug") {
+				logDebug.Printf("fetching DaemonSet status: %+v", r.DeploymentStatus)
+			}
+
+			if (r.DeploymentStatus.DesiredNumberScheduled == r.DeploymentStatus.NumberAvailable) &&
+			(r.DeploymentStatus.UpdatedNumberScheduled == r.DeploymentStatus.DesiredNumberScheduled) {
+				logInfo.Printf("DaemonSet %q is complete. Available replicas: %d\n",
+					r.Name, r.DeploymentStatus.NumberAvailable)
+				return nil
+			}
+			logInfo.Printf("DaemonSet update %q in progress. Replicas to update: %d.\n",
+				r.Name, r.DeploymentStatus.DesiredNumberScheduled-r.DeploymentStatus.UpdatedNumberScheduled)
+
+			// Fail the deployment in case another deployment has started
+			if og != r.DeploymentStatus.ObservedGeneration && c.Bool("fail-superseded") {
+				return fmt.Errorf("DaemonSet update failed. It has been superseded by another update")
+			}
+		}
+	}
+}
+
 func updateDeploymentStatus(c *cli.Context, r *ObjectResource) error {
-	args := []string{"get", "deployment/" + r.Name, "-o", "yaml"}
+	args := []string{"get", r.Kind + "/" + r.Name, "-o", "yaml"}
 	cmd, err := newKubeCmd(c, args)
 	if err != nil {
 		return err
