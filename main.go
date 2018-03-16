@@ -13,7 +13,7 @@ import (
 	"strings"
 	"text/template"
 	"time"
-
+	"github.com/joho/godotenv"
 	"github.com/urfave/cli"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -62,6 +62,11 @@ func main() {
 			Name:   "kube-token, t",
 			Usage:  "kubernetes auth `TOKEN`",
 			EnvVar: "KUBE_TOKEN,PLUGIN_KUBE_TOKEN",
+		},
+		cli.StringFlag{
+			Name:   "config",
+			Usage:  "Env file location",
+			EnvVar: "CONFIG_FILE,PLUGIN_CONFIG_FILE",
 		},
 		cli.StringFlag{
 			Name:   "context, c",
@@ -129,6 +134,14 @@ func run(c *cli.Context) error {
 	// Check we have some files to process
 	if len(c.StringSlice("file")) == 0 {
 		return errors.New("no kubernetes resource files specified")
+	}
+
+	// Load Environment file overrides into the OS Environment Scope
+	if c.IsSet("config") {
+		err := godotenv.Load(c.String("config"))
+		if err != nil {
+			return errors.New("Error loading .env file")
+		}
 	}
 
 	// Check if all files exist first - fail early on building up a list of files
