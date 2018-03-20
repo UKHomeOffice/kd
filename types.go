@@ -74,6 +74,8 @@ type DeploymentStatus struct {
 	UpdatedNumberScheduled int32 `yaml:"updatedNumberScheduled,omitempty"`
 	// End: Daemonset statuses
 
+	// Job Succeeded status
+	Succeeded int32 `yaml:"succeeded,omitempty"`
 }
 
 type ObjectSpec struct {
