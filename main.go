@@ -194,20 +194,39 @@ func run(c *cli.Context) error {
 }
 
 func render(tmpl string, vars map[string]string) (string, error) {
+	var err error
 	fm := template.FuncMap{
 		"contains": strings.Contains,
 		"hasPrefix": strings.HasPrefix,
 		"hasSuffix": strings.HasSuffix,
 		"split": strings.Split,
+		"file": fileRender,
 	}
-
+        defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("failed to parse template, error: %s", r)
+		}
+	}()
 	t := template.Must(template.New("template").Funcs(fm).Parse(tmpl))
 	t.Option("missingkey=error")
 	var b bytes.Buffer
 	if err := t.Execute(&b, vars); err != nil {
 		return b.String(), err
 	}
-	return b.String(), nil
+	// need to replace blank lines because of bad template formating
+	return strings.Replace(b.String(), "\n\n", "\n", -1), nil
+}
+
+func fileRender(key string) string {
+	data, err := ioutil.ReadFile(key)
+	if err != nil {
+		panic(err.Error())
+	}
+	render, err := render(string(data), envToMap())
+	if err != nil {
+		panic(err.Error())
+	}
+	return render
 }
 
 func envToMap() map[string]string {
