@@ -176,7 +176,7 @@ func run(c *cli.Context) error {
 		if err != nil {
 			return err
 		}
-
+                fmt.Printf("here's the render output; \n%s",rendered)
 		for _, d := range splitYamlDocs(rendered) {
 			r := ObjectResource{FileName: fn, Template: []byte(d)}
 			resources = append(resources, &r)
