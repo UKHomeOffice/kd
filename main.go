@@ -284,208 +284,115 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 		return err
 	}
 	logInfo.Print(outbuf.String())
-	switch r.Kind {
-	case "Deployment":
-		return watchDeployment(c, r)
-	case "StatefulSet":
-		return watchStatefulSet(c, r)
-	case "DaemonSet":
-		return watchDaemonSet(c, r)
-	case "Job":
-		return watchJob(c, r)
+	if isWatchableResouce(r) {
+		return watchResource(c, r)
 	}
 	return nil
 }
 
-func watchDeployment(c *cli.Context, r *ObjectResource) error {
+func isWatchableResouce(r *ObjectResource) bool {
+	included := false
+	watchable := []string{"Deployment", "StatefulSet", "DaemonSet", "Job"}
+	for _, item := range watchable {
+	  if item == r.Kind {
+	    included = true
+	    break
+	  }
+	}
+	return included
+}
+
+func watchResource(c *cli.Context, r *ObjectResource) error {
 	if c.Bool("debug") {
-		logDebug.Printf("sleeping %d seconds before checking deployment status for the first time", DeployDelaySeconds)
+		logDebug.Printf("sleeping %d seconds before checking %s status for the first time", DeployDelaySeconds, r.Kind)
 	}
 	time.Sleep(DeployDelaySeconds * time.Second)
 
-	if err := updateDeploymentStatus(c, r); err != nil {
+	if err := updateResourceStatus(c, r); err != nil {
 		return err
+	}
+
+	if r.Kind == "StatefulSet" || r.Kind == "DaemonSet" {
+		if r.ObjectSpec.UpdateStrategy.Type != "RollingUpdate" {
+			if c.Bool("debug") {
+				logDebug.Printf("Only %s with type of RollingUpdate will be watched for completion", r.Kind)
+			}
+			return nil
+		}
 	}
 
 	ticker := time.NewTicker(c.Duration("check-interval"))
 	timeout := time.After(c.Duration("timeout"))
+
 	og := r.DeploymentStatus.ObservedGeneration
+	ready := false
+	var availableResourceCount int32 = 0
+	var unavailableResourceCount int32 = 0
 
 	for {
 		select {
 		case <-timeout:
-			return fmt.Errorf("deployment %q timed out after %s", r.Name, c.Duration("timeout").String())
+			return fmt.Errorf("%s rolling update %q timed out after %s", r.Kind, r.Name, c.Duration("timeout").String())
 		case <-ticker.C:
 			r.DeploymentStatus = DeploymentStatus{}
 			// @TODO should a one-off error (perhaps network issue) cause us to completly fail?
-			if err := updateDeploymentStatus(c, r); err != nil {
+			if err := updateResourceStatus(c, r); err != nil {
 				return err
 			}
 			if c.Bool("debug") {
-				logDebug.Printf("fetching deployment status: %+v", r.DeploymentStatus)
+				logDebug.Printf("fetching %s %q status: %+v", r.Kind, r.Name, r.DeploymentStatus)
 			}
 
-			if (r.DeploymentStatus.UnavailableReplicas == 0 && r.DeploymentStatus.AvailableReplicas == r.DeploymentStatus.Replicas) &&
+			ready = false
+
+			switch r.Kind {
+			case "Deployment":
+				if (r.DeploymentStatus.UnavailableReplicas == 0 && r.DeploymentStatus.AvailableReplicas == r.DeploymentStatus.Replicas) && 
 				r.DeploymentStatus.Replicas == r.DeploymentStatus.UpdatedReplicas {
-				logInfo.Printf("deployment %q is complete. Available replicas: %d\n",
-					r.Name, r.DeploymentStatus.AvailableReplicas)
-				return nil
-			}
-			logInfo.Printf("deployment %q in progress. Unavailable replicas: %d.\n",
-				r.Name, r.DeploymentStatus.UnavailableReplicas)
+					ready = true
+				}
+				availableResourceCount = r.DeploymentStatus.AvailableReplicas
+				unavailableResourceCount = r.DeploymentStatus.UnavailableReplicas
 
-			// Fail the deployment in case another deployment has started
-			if og != r.DeploymentStatus.ObservedGeneration && c.Bool("fail-superseded") {
-				return fmt.Errorf("deployment failed. It has been superseded by another deployment")
-			}
-		}
-	}
-}
-
-func watchStatefulSet(c *cli.Context, r *ObjectResource) error {
-	if c.Bool("debug") {
-		logDebug.Printf("sleeping %d seconds before checking statefulset status for the first time", DeployDelaySeconds)
-	}
-	time.Sleep(DeployDelaySeconds * time.Second)
-
-	if err := updateDeploymentStatus(c, r); err != nil {
-		return err
-	}
-
-	if r.ObjectSpec.UpdateStrategy.Type != "RollingUpdate" {
-		if c.Bool("debug") {
-			logDebug.Printf("Only statefulset with type of RollingUpdate will be watched for completion")
-		}
-		return nil
-	}
-
-	ticker := time.NewTicker(c.Duration("check-interval"))
-	timeout := time.After(c.Duration("timeout"))
-
-	og := r.DeploymentStatus.ObservedGeneration
-
-	for {
-		select {
-		case <-timeout:
-			return fmt.Errorf("statefulset rolling update %q timed out after %s", r.Name, c.Duration("timeout").String())
-		case <-ticker.C:
-			r.DeploymentStatus = DeploymentStatus{}
-			// @TODO should a one-off error (perhaps network issue) cause us to completly fail?
-			if err := updateDeploymentStatus(c, r); err != nil {
-				return err
-			}
-			if c.Bool("debug") {
-				logDebug.Printf("fetching statefulset status: %+v", r.DeploymentStatus)
-			}
-
-			if (r.DeploymentStatus.ReadyReplicas == r.ObjectSpec.Replicas) &&
+			case "StatefulSet":
+				if (r.DeploymentStatus.ReadyReplicas == r.ObjectSpec.Replicas) && 
 				r.DeploymentStatus.CurrentRevision == r.DeploymentStatus.UpdateRevision {
-				logInfo.Printf("statefulset %q is complete. Available replicas: %d\n",
-					r.Name, r.DeploymentStatus.ReadyReplicas)
-				return nil
-			}
-			logInfo.Printf("statefulset update %q in progress. Unready replicas: %d.\n",
-				r.Name, r.ObjectSpec.Replicas-r.DeploymentStatus.ReadyReplicas)
+					ready = true
+				}
+				availableResourceCount = r.DeploymentStatus.ReadyReplicas
+				unavailableResourceCount = r.ObjectSpec.Replicas-r.DeploymentStatus.ReadyReplicas
 
-			// Fail the deployment in case another deployment has started
-			if og != r.DeploymentStatus.ObservedGeneration && c.Bool("fail-superseded") {
-				return fmt.Errorf("statefulset update failed. It has been superseded by another update")
-			}
-		}
-	}
-}
-
-func watchDaemonSet(c *cli.Context, r *ObjectResource) error {
-	if c.Bool("debug") {
-		logDebug.Printf("sleeping %d seconds before checking DaemonSet status for the first time", DeployDelaySeconds)
-	}
-	time.Sleep(DeployDelaySeconds * time.Second)
-
-	if err := updateDeploymentStatus(c, r); err != nil {
-		return err
-	}
-
-	if r.ObjectSpec.UpdateStrategy.Type != "RollingUpdate" {
-		if c.Bool("debug") {
-			logDebug.Printf("Only DaemonSets with type of RollingUpdate will be watched for completion")
-		}
-		return nil
-	}
-
-	ticker := time.NewTicker(c.Duration("check-interval"))
-	timeout := time.After(c.Duration("timeout"))
-
-	og := r.DeploymentStatus.ObservedGeneration
-
-	for {
-		select {
-		case <-timeout:
-			return fmt.Errorf("DaemonSet rolling update %q timed out after %s", r.Name, c.Duration("timeout").String())
-		case <-ticker.C:
-			r.DeploymentStatus = DeploymentStatus{}
-			// @TODO should a one-off error (perhaps network issue) cause us to completly fail?
-			if err := updateDeploymentStatus(c, r); err != nil {
-				return err
-			}
-			if c.Bool("debug") {
-				logDebug.Printf("fetching DaemonSet status: %+v", r.DeploymentStatus)
-			}
-
-			if (r.DeploymentStatus.DesiredNumberScheduled == r.DeploymentStatus.NumberAvailable) &&
+			case "DaemonSet":
+				if (r.DeploymentStatus.DesiredNumberScheduled == r.DeploymentStatus.NumberAvailable) && 
 				(r.DeploymentStatus.UpdatedNumberScheduled == r.DeploymentStatus.DesiredNumberScheduled) {
-				logInfo.Printf("DaemonSet %q is complete. Available replicas: %d\n",
-					r.Name, r.DeploymentStatus.NumberAvailable)
+					ready = true
+				}
+				availableResourceCount = r.DeploymentStatus.NumberAvailable
+				unavailableResourceCount = r.DeploymentStatus.DesiredNumberScheduled-r.DeploymentStatus.UpdatedNumberScheduled
+
+			case "Job":
+				if r.DeploymentStatus.Succeeded == 1 {
+					availableResourceCount = 1
+					ready = true	
+				}
+				unavailableResourceCount = 1
+			}
+
+			if ready {
+				logInfo.Printf("%s %q is complete. Available objects: %d\n", r.Kind, r.Name, availableResourceCount)
 				return nil
 			}
-			logInfo.Printf("DaemonSet update %q in progress. Replicas to update: %d.\n",
-				r.Name, r.DeploymentStatus.DesiredNumberScheduled-r.DeploymentStatus.UpdatedNumberScheduled)
+			logInfo.Printf("%s %q update in progress. Waiting for %d objects.\n", r.Kind, r.Name, unavailableResourceCount)
 
 			// Fail the deployment in case another deployment has started
 			if og != r.DeploymentStatus.ObservedGeneration && c.Bool("fail-superseded") {
-				return fmt.Errorf("DaemonSet update failed. It has been superseded by another update")
+				return fmt.Errorf("%s %q update failed. It has been superseded by another update", r.Kind, r.Name)
 			}
 		}
 	}
 }
 
-func watchJob(c *cli.Context, r *ObjectResource) error {
-	if c.Bool("debug") {
-		logDebug.Printf("sleeping %d seconds before checking Job status for the first time", DeployDelaySeconds)
-	}
-	time.Sleep(DeployDelaySeconds * time.Second)
-
-	if err := updateDeploymentStatus(c, r); err != nil {
-		return err
-	}
-
-	ticker := time.NewTicker(c.Duration("check-interval"))
-	timeout := time.After(c.Duration("timeout"))
-
-	for {
-		select {
-		case <-timeout:
-			return fmt.Errorf("Job %q timed out after %s", r.Name, c.Duration("timeout").String())
-		case <-ticker.C:
-			r.DeploymentStatus = DeploymentStatus{}
-			// @TODO should a one-off error (perhaps network issue) cause us to completly fail?
-			if err := updateDeploymentStatus(c, r); err != nil {
-				return err
-			}
-
-			if c.Bool("debug") {
-				logDebug.Printf("fetching Job status: %+v", r.DeploymentStatus)
-			}
-
-			if r.DeploymentStatus.Succeeded == 1 {
-				logInfo.Printf("Job %q has completed\n", r.Name)
-				return nil
-			}
-
-		}
-	}
-}
-
-func updateDeploymentStatus(c *cli.Context, r *ObjectResource) error {
+func updateResourceStatus(c *cli.Context, r *ObjectResource) error {
 	args := []string{"get", r.Kind + "/" + r.Name, "-o", "yaml"}
 	cmd, err := newKubeCmd(c, args)
 	if err != nil {
