@@ -13,6 +13,7 @@ import (
 	"strings"
 	"text/template"
 	"time"
+
 	"github.com/joho/godotenv"
 	"github.com/urfave/cli"
 	yaml "gopkg.in/yaml.v2"
@@ -196,13 +197,13 @@ func run(c *cli.Context) error {
 func render(tmpl string, vars map[string]string) (string, error) {
 	var err error
 	fm := template.FuncMap{
-		"contains": strings.Contains,
+		"contains":  strings.Contains,
 		"hasPrefix": strings.HasPrefix,
 		"hasSuffix": strings.HasSuffix,
-		"split": strings.Split,
-		"file": fileRender,
+		"split":     strings.Split,
+		"file":      fileRender,
 	}
-        defer func() {
+	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("failed to parse template, error: %s", r)
 		}
@@ -290,6 +291,8 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 		return watchStatefulSet(c, r)
 	case "DaemonSet":
 		return watchDaemonSet(c, r)
+	case "Job":
+		return watchJob(c, r)
 	}
 	return nil
 }
@@ -429,7 +432,7 @@ func watchDaemonSet(c *cli.Context, r *ObjectResource) error {
 			}
 
 			if (r.DeploymentStatus.DesiredNumberScheduled == r.DeploymentStatus.NumberAvailable) &&
-			(r.DeploymentStatus.UpdatedNumberScheduled == r.DeploymentStatus.DesiredNumberScheduled) {
+				(r.DeploymentStatus.UpdatedNumberScheduled == r.DeploymentStatus.DesiredNumberScheduled) {
 				logInfo.Printf("DaemonSet %q is complete. Available replicas: %d\n",
 					r.Name, r.DeploymentStatus.NumberAvailable)
 				return nil
@@ -441,6 +444,43 @@ func watchDaemonSet(c *cli.Context, r *ObjectResource) error {
 			if og != r.DeploymentStatus.ObservedGeneration && c.Bool("fail-superseded") {
 				return fmt.Errorf("DaemonSet update failed. It has been superseded by another update")
 			}
+		}
+	}
+}
+
+func watchJob(c *cli.Context, r *ObjectResource) error {
+	if c.Bool("debug") {
+		logDebug.Printf("sleeping %d seconds before checking Job status for the first time", DeployDelaySeconds)
+	}
+	time.Sleep(DeployDelaySeconds * time.Second)
+
+	if err := updateDeploymentStatus(c, r); err != nil {
+		return err
+	}
+
+	ticker := time.NewTicker(c.Duration("check-interval"))
+	timeout := time.After(c.Duration("timeout"))
+
+	for {
+		select {
+		case <-timeout:
+			return fmt.Errorf("Job %q timed out after %s", r.Name, c.Duration("timeout").String())
+		case <-ticker.C:
+			r.DeploymentStatus = DeploymentStatus{}
+			// @TODO should a one-off error (perhaps network issue) cause us to completly fail?
+			if err := updateDeploymentStatus(c, r); err != nil {
+				return err
+			}
+
+			if c.Bool("debug") {
+				logDebug.Printf("fetching Job status: %+v", r.DeploymentStatus)
+			}
+
+			if r.DeploymentStatus.Succeeded == 1 {
+				logInfo.Printf("Job %q has completed\n", r.Name)
+				return nil
+			}
+
 		}
 	}
 }
