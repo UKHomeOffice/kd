@@ -79,6 +79,20 @@ You can fail an ongoing deployment if there's been a new deployment by adding `-
 
 You can add the flag --debug-templates to render templates at run time.
 
+[Sprig](https://masterminds.github.io/sprig/) is used to add templating functions.
+
+To preserve backwards compatibility (parameter order) the following functions
+ still use the [golang strings libraries](https://golang.org/pkg/strings/):
+
+- contains
+- hasPrefix
+- hasSuffix
+- [split](#split)
+
+The function for including files is also preserved from before:
+
+- [file](#file)
+
 ### split
 
 `split` function is go's `strings.Split()`, it returns a `[]string`. A range function
@@ -89,7 +103,10 @@ can also be used to iterate over returned list.
 ---
 apiVersion: v1
 data:
-  foo: {{ split .LIST " "}}
+  foo:
+    {{ range split .LIST "," }}
+    - {{.}}
+    {{ end }}
 kind: ConfigMap
 metadata:
   name: list
@@ -110,7 +127,7 @@ metadata:
   name: list
 ```
 
-### Render config
+### file
 
 `file` function will locate and render a configuration file from your repo. A full path will need to be specified, you can run this in drone by using `workspace:` and a base directory (http://docs.drone.io/workspace/#app-drawer). Here's an example:
 
@@ -193,10 +210,12 @@ GLOBAL OPTIONS:
 
 ## Build
 
-Dependencies are located in the vendor directory and managed using
-[govendor](https://github.com/kardianos/govendor) cli tool.
-
+Dependencies are located in the vendor directory and managed using 
+[glide](https://github.com/Masterminds/glide/blob/master/README.md) cli tool.
+Install glide e.g. `curl https://glide.sh/get | sh` then use it to *install*
+vendored libs and then build e.g:
 ```
+glide install
 go test -v -cover
 
 mkdir -p bin
