@@ -50,6 +50,11 @@ func main() {
 			EnvVar: "DEBUG,PLUGIN_DEBUG",
 		},
 		cli.BoolFlag{
+			Name:   "debug-templates",
+			Usage:  "debug template output",
+			EnvVar: "DEBUG_TEMPLATES,PLUGIN_DEBUG_TEMPLATES",
+		},
+		cli.BoolFlag{
 			Name:   "insecure-skip-tls-verify",
 			Usage:  "if true, the server's certificate will not be checked for validity",
 			EnvVar: "INSECURE_SKIP_TLS_VERIFY,PLUGIN_INSECURE_SKIP_TLS_VERIFY",
@@ -186,6 +191,9 @@ func run(c *cli.Context) error {
 	}
 
 	for _, r := range resources {
+		if c.Bool("debug-templates") {
+			logInfo.Printf("Template:\n" + string(r.Template[:]))
+		}
 		if err := yaml.Unmarshal(r.Template, &r); err != nil {
 			return err
 		}
