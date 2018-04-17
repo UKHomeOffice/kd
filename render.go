@@ -5,16 +5,19 @@ import (
 	"io/ioutil"
 	"strings"
 	"text/template"
+
+	"github.com/Masterminds/sprig"
 )
 
 func Render(tmpl string, vars map[string]string) (string, error) {
-	fm := template.FuncMap{
-		"contains":  strings.Contains,
-		"hasPrefix": strings.HasPrefix,
-		"hasSuffix": strings.HasSuffix,
-		"split":     strings.Split,
-		"file":      fileRender,
-	}
+	fm := sprig.TxtFuncMap()
+	// Preserve old KD functionality (strings param order vs sprig)
+	fm["contains"] = strings.Contains
+	fm["hasPrefix"] = strings.HasPrefix
+	fm["hasSuffix"] = strings.HasSuffix
+	fm["split"] = strings.Split
+	// Add file function to map
+	fm["file"] = fileRender
 	defer func() {
 		if err := recover(); err != nil {
 			logError.Fatal(err)
