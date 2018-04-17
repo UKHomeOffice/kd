@@ -1,0 +1,8 @@
+---
+kind: ConfigMap
+metadata:
+  name: list
+apiVersion: v1
+data:
+  foo:
+    hasSuffix: three
