@@ -195,7 +195,6 @@ func run(c *cli.Context) error {
 }
 
 func render(tmpl string, vars map[string]string) (string, error) {
-	var err error
 	fm := template.FuncMap{
 		"contains":  strings.Contains,
 		"hasPrefix": strings.HasPrefix,
@@ -204,8 +203,8 @@ func render(tmpl string, vars map[string]string) (string, error) {
 		"file":      fileRender,
 	}
 	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("failed to parse template, error: %s", r)
+		if err := recover(); err != nil {
+			logError.Fatal(err)
 		}
 	}()
 	t := template.Must(template.New("template").Funcs(fm).Parse(tmpl))
