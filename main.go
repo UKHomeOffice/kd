@@ -148,6 +148,7 @@ func run(c *cli.Context) error {
 	// Check if all files exist first - fail early on building up a list of files
 	var files []string
 	for _, fn := range c.StringSlice("file") {
+		logDebug.Printf("about to open file:%s\n", fn)
 		stat, err := os.Stat(fn)
 		if err != nil {
 			return err
@@ -167,6 +168,7 @@ func run(c *cli.Context) error {
 	// Iterate the list of files and add rendered templates to resources list - fail early.
 	resources := []*ObjectResource{}
 	for _, fn := range files {
+		logDebug.Printf("parsing file:%s\n", fn)
 		data, err := ioutil.ReadFile(fn)
 		if err != nil {
 			return err
@@ -251,6 +253,7 @@ func splitYamlDocs(data string) []string {
 }
 
 func deploy(c *cli.Context, r *ObjectResource) error {
+	logDebug.Printf("about to deploy resource %s/%s (from file:%q)", r.Kind, r.Name, r.FileName)
 	args := []string{"apply", "-f", "-"}
 	cmd, err := newKubeCmd(c, args)
 	if err != nil {
