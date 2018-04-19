@@ -77,6 +77,8 @@ You can fail an ongoing deployment if there's been a new deployment by adding `-
 
 ## Templating
 
+You can add the flag --debug-templates to render templates at run time.
+
 ### split
 
 `split` function is go's `strings.Split()`, it returns a `[]string`. A range function
