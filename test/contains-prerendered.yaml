@@ -1,0 +1,10 @@
+---
+kind: ConfigMap
+metadata:
+  name: list
+apiVersion: v1
+data:
+  foo:
+  {{- if contains .MY_LIST "three" }}
+    contains: three
+  {{- end }}

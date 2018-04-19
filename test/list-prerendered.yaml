@@ -1,0 +1,10 @@
+---
+kind: ConfigMap
+metadata:
+  name: list
+apiVersion: v1
+data:
+  foo:
+  {{- range split .MY_LIST "," }}
+  - {{.}}
+  {{- end }}
