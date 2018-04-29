@@ -78,6 +78,7 @@ You can fail an ongoing deployment if there's been a new deployment by adding `-
 ## Templating
 
 You can add the flag --debug-templates to render templates at run time.
+Check the examples folder for more info.
 
 [Sprig](https://masterminds.github.io/sprig/) is used to add templating functions.
 
@@ -102,29 +103,32 @@ can also be used to iterate over returned list.
 # split.yaml
 ---
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: list
 data:
   foo:
     {{ range split .LIST "," }}
     - {{.}}
     {{ end }}
-kind: ConfigMap
-metadata:
-  name: list
+
 ```
 
 ```
 $ export LIST="one,two,three"
-$ ./kd -f split.yaml -- --dry-run -o yaml
+$ ./kd -f split.yaml --dry-run --debug-templates
 [INFO] 2017/10/18 15:08:09 main.go:241: deploying configmap/list
 [INFO] 2017/10/18 15:08:09 main.go:248: apiVersion: v1
-data:
-  foo:
-  - one
-  - two
-  - three
+---
+apiVersion: v1
 kind: ConfigMap
 metadata:
   name: list
+data:
+  foo:
+    {{ range split .LIST "," }}
+    - {{.}}
+    {{ end }}
 ```
 
 ### file
@@ -135,12 +139,12 @@ metadata:
 # file.yaml
 ---
 apiVersion: v1
-data:
-  foo:
-{{ file .BAR }}
 kind: ConfigMap
 metadata:
   name: list
+data:
+  foo:
+{{ file .BAR | indent 4}}
 ```
 
 ```
@@ -150,17 +154,18 @@ $ cat <<EOF > config.yaml
   - three
 EOF
 $ export BAR=${PWD}/config.yaml
-$ ./kd -f file.yaml -- --dry-run -o yaml
+$ ./kd -f file.yaml --dry-run --debug-templates
 [INFO] 2017/10/18 15:08:09 main.go:241: deploying configmap/list
 [INFO] 2017/10/18 15:08:09 main.go:248: apiVersion: v1
-data:
-  foo:
-  - one
-  - two
-  - three
+apiVersion: v1
 kind: ConfigMap
 metadata:
   name: list
+data:
+  foo:
+    - one
+    - two
+    - three
 ```
 
 ## Configuration

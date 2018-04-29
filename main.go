@@ -18,7 +18,12 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-const DeployDelaySeconds = 3
+const (
+	// DeployDelaySeconds - delay between deployments
+	DeployDelaySeconds = 3
+	// MaxHealthcheckRetries - Amount of times to retry checking of resource after deployment
+	MaxHealthcheckRetries = 3
+)
 
 var (
 	// Version is set at compile time, passing -ldflags "-X main.Version=<build version>"
@@ -27,6 +32,9 @@ var (
 	logInfo  *log.Logger
 	logError *log.Logger
 	logDebug *log.Logger
+
+	// dryRun Defaults to false
+	dryRun bool
 )
 
 func init() {
@@ -52,6 +60,12 @@ func main() {
 			Name:   "debug-templates",
 			Usage:  "debug template output",
 			EnvVar: "DEBUG_TEMPLATES,PLUGIN_DEBUG_TEMPLATES",
+		},
+		cli.BoolFlag{
+			Name:        "dryrun",
+			Usage:       "if true, kd will exit prior to deployment",
+			EnvVar:      "DRY_RUN",
+			Destination: &dryRun,
 		},
 		cli.BoolFlag{
 			Name:   "insecure-skip-tls-verify",
@@ -196,8 +210,12 @@ func run(c *cli.Context) error {
 		if err := yaml.Unmarshal(r.Template, &r); err != nil {
 			return err
 		}
-		if err := deploy(c, r); err != nil {
-			return err
+
+		// Only perform deploy if dry-run is not set to true
+		if !dryRun {
+			if err := deploy(c, r); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -269,10 +287,10 @@ func isWatchableResouce(r *ObjectResource) bool {
 	included := false
 	watchable := []string{"Deployment", "StatefulSet", "DaemonSet", "Job"}
 	for _, item := range watchable {
-	  if item == r.Kind {
-	    included = true
-	    break
-	  }
+		if item == r.Kind {
+			included = true
+			break
+		}
 	}
 	return included
 }
@@ -301,8 +319,8 @@ func watchResource(c *cli.Context, r *ObjectResource) error {
 
 	og := r.DeploymentStatus.ObservedGeneration
 	ready := false
-	var availableResourceCount int32 = 0
-	var unavailableResourceCount int32 = 0
+	var availableResourceCount int32
+	var unavailableResourceCount int32
 
 	for {
 		select {
@@ -310,10 +328,21 @@ func watchResource(c *cli.Context, r *ObjectResource) error {
 			return fmt.Errorf("%s rolling update %q timed out after %s", r.Kind, r.Name, c.Duration("timeout").String())
 		case <-ticker.C:
 			r.DeploymentStatus = DeploymentStatus{}
-			// @TODO should a one-off error (perhaps network issue) cause us to completly fail?
-			if err := updateResourceStatus(c, r); err != nil {
-				return err
+
+			// Retry on error until max retries is met
+			for attempt := 0; attempt < MaxHealthcheckRetries; attempt++ {
+				if err := updateResourceStatus(c, r); err != nil {
+
+					// Return error on final try
+					if attempt == (MaxHealthcheckRetries - 1) {
+						return err
+					}
+
+				} else {
+					break
+				}
 			}
+
 			if c.Bool("debug") {
 				logDebug.Printf("fetching %s %q status: %+v", r.Kind, r.Name, r.DeploymentStatus)
 			}
@@ -322,33 +351,33 @@ func watchResource(c *cli.Context, r *ObjectResource) error {
 
 			switch r.Kind {
 			case "Deployment":
-				if (r.DeploymentStatus.UnavailableReplicas == 0 && r.DeploymentStatus.AvailableReplicas == r.DeploymentStatus.Replicas) && 
-				r.DeploymentStatus.Replicas == r.DeploymentStatus.UpdatedReplicas {
+				if (r.DeploymentStatus.UnavailableReplicas == 0 && r.DeploymentStatus.AvailableReplicas == r.DeploymentStatus.Replicas) &&
+					r.DeploymentStatus.Replicas == r.DeploymentStatus.UpdatedReplicas {
 					ready = true
 				}
 				availableResourceCount = r.DeploymentStatus.AvailableReplicas
 				unavailableResourceCount = r.DeploymentStatus.UnavailableReplicas
 
 			case "StatefulSet":
-				if (r.DeploymentStatus.ReadyReplicas == r.ObjectSpec.Replicas) && 
-				r.DeploymentStatus.CurrentRevision == r.DeploymentStatus.UpdateRevision {
+				if (r.DeploymentStatus.ReadyReplicas == r.ObjectSpec.Replicas) &&
+					r.DeploymentStatus.CurrentRevision == r.DeploymentStatus.UpdateRevision {
 					ready = true
 				}
 				availableResourceCount = r.DeploymentStatus.ReadyReplicas
-				unavailableResourceCount = r.ObjectSpec.Replicas-r.DeploymentStatus.ReadyReplicas
+				unavailableResourceCount = r.ObjectSpec.Replicas - r.DeploymentStatus.ReadyReplicas
 
 			case "DaemonSet":
-				if (r.DeploymentStatus.DesiredNumberScheduled == r.DeploymentStatus.NumberAvailable) && 
-				(r.DeploymentStatus.UpdatedNumberScheduled == r.DeploymentStatus.DesiredNumberScheduled) {
+				if (r.DeploymentStatus.DesiredNumberScheduled == r.DeploymentStatus.NumberAvailable) &&
+					(r.DeploymentStatus.UpdatedNumberScheduled == r.DeploymentStatus.DesiredNumberScheduled) {
 					ready = true
 				}
 				availableResourceCount = r.DeploymentStatus.NumberAvailable
-				unavailableResourceCount = r.DeploymentStatus.DesiredNumberScheduled-r.DeploymentStatus.UpdatedNumberScheduled
+				unavailableResourceCount = r.DeploymentStatus.DesiredNumberScheduled - r.DeploymentStatus.UpdatedNumberScheduled
 
 			case "Job":
 				if r.DeploymentStatus.Succeeded == 1 {
 					availableResourceCount = 1
-					ready = true	
+					ready = true
 				}
 				unavailableResourceCount = 1
 			}
