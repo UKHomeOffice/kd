@@ -108,15 +108,14 @@ metadata:
   name: list
 data:
   foo:
-    {{ range split .LIST "," }}
-    - {{.}}
-    {{ end }}
-
+{{ range split .LIST "," }}
+    - {{ . }}
+    {{- end -}}
 ```
 
 ```
 $ export LIST="one,two,three"
-$ ./kd -f split.yaml --dry-run --debug-templates
+$ ./kd -f split.yaml --dryrun --debug-templates
 [INFO] 2017/10/18 15:08:09 main.go:241: deploying configmap/list
 [INFO] 2017/10/18 15:08:09 main.go:248: apiVersion: v1
 ---
@@ -126,9 +125,9 @@ metadata:
   name: list
 data:
   foo:
-  - one
-  - two
-  - three
+    - one
+    - two
+    - three
 ```
 
 ### file
@@ -149,12 +148,12 @@ data:
 
 ```
 $ cat <<EOF > config.yaml
-  - one
-  - two
-  - three
+- one
+- two
+- three
 EOF
 $ export BAR=${PWD}/config.yaml
-$ ./kd -f file.yaml --dry-run --debug-templates
+$ ./kd -f file.yaml --dryrun --debug-templates
 [INFO] 2017/10/18 15:08:09 main.go:241: deploying configmap/list
 [INFO] 2017/10/18 15:08:09 main.go:248: apiVersion: v1
 apiVersion: v1

@@ -5,7 +5,7 @@ metadata:
   name: list
 data:
   foo:
-    {{ range split .LIST "," }}
-    - {{.}}
-    {{ end }}
+{{ range split .LIST "," }}
+    - {{ . }}
+    {{- end -}}
 
