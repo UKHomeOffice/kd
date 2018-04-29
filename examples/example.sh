@@ -9,6 +9,6 @@ export LIST="ENTRY1,ENTRY2,ENTRY3,ENTRY4"
 export BAR="${PWD}/vars/config"
 #kd -c mykube -n testing -f file.yaml --debug-templates --dryrun
 
-echo "Dry run example complete"
-
 kd -f . --debug-templates --dryrun
+
+echo "Dry run example complete"
