@@ -126,9 +126,9 @@ metadata:
   name: list
 data:
   foo:
-    {{ range split .LIST "," }}
-    - {{.}}
-    {{ end }}
+  - one
+  - two
+  - three
 ```
 
 ### file
