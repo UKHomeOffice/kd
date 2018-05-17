@@ -23,6 +23,8 @@ const (
 	DeployDelaySeconds = 3
 	// MaxHealthcheckRetries - Amount of times to retry checking of resource after deployment
 	MaxHealthcheckRetries = 3
+	// HealthCheckSleepDuration - the amount of time to sleep (seconds) between healthcehck retries
+	HealthCheckSleepDuration = time.Duration(int64(2)) * time.Second
 )
 
 var (
@@ -337,6 +339,9 @@ func watchResource(c *cli.Context, r *ObjectResource) error {
 					if attempt == (MaxHealthcheckRetries - 1) {
 						return err
 					}
+
+					// Sleep between retries
+					time.Sleep(HealthCheckSleepDuration)
 
 				} else {
 					break
