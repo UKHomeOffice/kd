@@ -21,6 +21,12 @@ docker run quay.io/ukhomeofficedigital/kd:latest --help
 
 Please download the required binary file from the [releases page](https://github.com/UKHomeOffice/kd/releases)
 
+For Mac Users - Please download release `kd_darwin_amd64` and run the following commands. These will ensure the binary is renamed to 'kd', it's also in your `${PATH}`, and that you have permissions to run it on your system.
+```bash
+mv ~/Downloads/kd_darwin_amd64 /usr/local/bin/kd
+chmod u+x /usr/local/bin/kd
+```
+
 ## Getting Started
 
 The is only requirement and that is a kubectl binary in your `${PATH}`. You
@@ -210,7 +216,7 @@ GLOBAL OPTIONS:
 
 ## Build
 
-Dependencies are located in the vendor directory and managed using 
+Dependencies are located in the vendor directory and managed using
 [glide](https://github.com/Masterminds/glide/blob/master/README.md) cli tool.
 Install glide e.g. `curl https://glide.sh/get | sh` then use it to *install*
 vendored libs and then build e.g:
