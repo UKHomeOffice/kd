@@ -226,8 +226,17 @@ func splitYamlDocs(data string) []string {
 }
 
 func deploy(c *cli.Context, r *ObjectResource) error {
-	logDebug.Printf("about to deploy resource %s/%s (from file:%q)", r.Kind, r.Name, r.FileName)
-	args := []string{"apply", "-f", "-"}
+
+	name := r.Name
+	command := "apply"
+
+	if r.GenerateName != "" {
+		name = r.GenerateName
+		command = "create"
+	}
+
+	logDebug.Printf("about to deploy resource %s/%s (from file:%q)", r.Kind, name, r.FileName)
+	args := []string{command, "-f", "-"}
 	cmd, err := newKubeCmd(c, args)
 	if err != nil {
 		return err
@@ -259,6 +268,13 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 		return err
 	}
 	logInfo.Print(outbuf.String())
+
+	if r.GenerateName != "" {
+		//This gets the generated resource name from the output
+		resourceName := strings.TrimSuffix(outbuf.String(), " created\n")
+		r.Name = strings.Split(resourceName, "/")[1]
+	}
+
 	if isWatchableResouce(r) {
 		return watchResource(c, r)
 	}
