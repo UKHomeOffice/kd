@@ -189,7 +189,6 @@ func run(c *cli.Context) error {
 		}
 	}
 
-	watch := []*ObjectResource{}
 	for _, r := range resources {
 		if c.Bool("debug-templates") {
 			logInfo.Printf("Template:\n" + string(r.Template[:]))
@@ -200,17 +199,7 @@ func run(c *cli.Context) error {
 		if err := deploy(c, r); err != nil {
 			return err
 		}
-		if isWatchableResouce(r) {
-			watch = append(watch, r)
-		}
 	}
-
-	for _, r := range watch {
-		if err := watchResource(c, r); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
@@ -270,6 +259,9 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 		return err
 	}
 	logInfo.Print(outbuf.String())
+	if isWatchableResouce(r) {
+		return watchResource(c, r)
+	}
 	return nil
 }
 
@@ -277,10 +269,10 @@ func isWatchableResouce(r *ObjectResource) bool {
 	included := false
 	watchable := []string{"Deployment", "StatefulSet", "DaemonSet", "Job"}
 	for _, item := range watchable {
-		if item == r.Kind {
-			included = true
-			break
-		}
+	  if item == r.Kind {
+	    included = true
+	    break
+	  }
 	}
 	return included
 }
@@ -330,33 +322,33 @@ func watchResource(c *cli.Context, r *ObjectResource) error {
 
 			switch r.Kind {
 			case "Deployment":
-				if (r.DeploymentStatus.UnavailableReplicas == 0 && r.DeploymentStatus.AvailableReplicas == r.DeploymentStatus.Replicas) &&
-					r.DeploymentStatus.Replicas == r.DeploymentStatus.UpdatedReplicas {
+				if (r.DeploymentStatus.UnavailableReplicas == 0 && r.DeploymentStatus.AvailableReplicas == r.DeploymentStatus.Replicas) && 
+				r.DeploymentStatus.Replicas == r.DeploymentStatus.UpdatedReplicas {
 					ready = true
 				}
 				availableResourceCount = r.DeploymentStatus.AvailableReplicas
 				unavailableResourceCount = r.DeploymentStatus.UnavailableReplicas
 
 			case "StatefulSet":
-				if (r.DeploymentStatus.ReadyReplicas == r.ObjectSpec.Replicas) &&
-					r.DeploymentStatus.CurrentRevision == r.DeploymentStatus.UpdateRevision {
+				if (r.DeploymentStatus.ReadyReplicas == r.ObjectSpec.Replicas) && 
+				r.DeploymentStatus.CurrentRevision == r.DeploymentStatus.UpdateRevision {
 					ready = true
 				}
 				availableResourceCount = r.DeploymentStatus.ReadyReplicas
-				unavailableResourceCount = r.ObjectSpec.Replicas - r.DeploymentStatus.ReadyReplicas
+				unavailableResourceCount = r.ObjectSpec.Replicas-r.DeploymentStatus.ReadyReplicas
 
 			case "DaemonSet":
-				if (r.DeploymentStatus.DesiredNumberScheduled == r.DeploymentStatus.NumberAvailable) &&
-					(r.DeploymentStatus.UpdatedNumberScheduled == r.DeploymentStatus.DesiredNumberScheduled) {
+				if (r.DeploymentStatus.DesiredNumberScheduled == r.DeploymentStatus.NumberAvailable) && 
+				(r.DeploymentStatus.UpdatedNumberScheduled == r.DeploymentStatus.DesiredNumberScheduled) {
 					ready = true
 				}
 				availableResourceCount = r.DeploymentStatus.NumberAvailable
-				unavailableResourceCount = r.DeploymentStatus.DesiredNumberScheduled - r.DeploymentStatus.UpdatedNumberScheduled
+				unavailableResourceCount = r.DeploymentStatus.DesiredNumberScheduled-r.DeploymentStatus.UpdatedNumberScheduled
 
 			case "Job":
 				if r.DeploymentStatus.Succeeded == 1 {
 					availableResourceCount = 1
-					ready = true
+					ready = true	
 				}
 				unavailableResourceCount = 1
 			}
