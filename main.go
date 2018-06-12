@@ -189,6 +189,7 @@ func run(c *cli.Context) error {
 		}
 	}
 
+	watch := []*ObjectResource{}
 	for _, r := range resources {
 		if c.Bool("debug-templates") {
 			logInfo.Printf("Template:\n" + string(r.Template[:]))
@@ -199,7 +200,17 @@ func run(c *cli.Context) error {
 		if err := deploy(c, r); err != nil {
 			return err
 		}
+		if isWatchableResouce(r) {
+			watch = append(watch, r)
+		}
 	}
+
+	for _, r := range watch {
+		if err := watchResource(c, r); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -259,9 +270,6 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 		return err
 	}
 	logInfo.Print(outbuf.String())
-	if isWatchableResouce(r) {
-		return watchResource(c, r)
-	}
 	return nil
 }
 
