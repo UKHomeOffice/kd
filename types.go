@@ -81,6 +81,7 @@ type DeploymentStatus struct {
 	Succeeded int32 `yaml:"succeeded,omitempty"`
 }
 
+// ObjectSpec - fields used for setting StatefulSet update behaviour
 type ObjectSpec struct {
 	// UpdateStrategy indicates the StatefulSetUpdateStrategy that will be employed to update Pods in the StatefulSet when a revision is made to Template.
 	UpdateStrategy `yaml:"updateStrategy,omitempty"`

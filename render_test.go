@@ -20,9 +20,9 @@ func readfile(filepath string) string {
 }
 
 func TestRender(t *testing.T) {
-	test_data := make(map[string]string)
-	test_data["MY_LIST"] = "one,two,three"
-	test_data["FILE_PATH"] = "test/complex-file.pem"
+	testData := make(map[string]string)
+	testData["MY_LIST"] = "one,two,three"
+	testData["FILE_PATH"] = "test/complex-file.pem"
 
 	cases := []struct {
 		name      string
@@ -39,31 +39,31 @@ func TestRender(t *testing.T) {
 		{
 			name:      "Check list variables are rendered",
 			inputdata: readfile("test/list-prerendered.yaml"),
-			inputvars: test_data,
+			inputvars: testData,
 			want:      readfile("test/list-rendered.yaml"),
 		},
 		{
 			name:      "Check file function is rendered",
 			inputdata: readfile("test/file-prerendered.yaml"),
-			inputvars: test_data,
+			inputvars: testData,
 			want:      readfile("test/file-rendered.yaml"),
 		},
 		{
 			name:      "Check contains function works as expected",
 			inputdata: readfile("test/contains-prerendered.yaml"),
-			inputvars: test_data,
+			inputvars: testData,
 			want:      readfile("test/contains-rendered.yaml"),
 		},
 		{
 			name:      "Check hasPrefix function works as expected",
 			inputdata: readfile("test/hasPrefix-prerendered.yaml"),
-			inputvars: test_data,
+			inputvars: testData,
 			want:      readfile("test/hasPrefix-rendered.yaml"),
 		},
 		{
 			name:      "Check hasSuffix function works as expected",
 			inputdata: readfile("test/hasSuffix-prerendered.yaml"),
-			inputvars: test_data,
+			inputvars: testData,
 			want:      readfile("test/hasSuffix-rendered.yaml"),
 		},
 	}
