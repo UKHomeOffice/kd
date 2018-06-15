@@ -9,6 +9,7 @@ import (
 	"github.com/Masterminds/sprig"
 )
 
+// Render - the function used for rendering templates (with Sprig support)
 func Render(tmpl string, vars map[string]string) (string, error) {
 	fm := sprig.TxtFuncMap()
 	// Preserve old KD functionality (strings param order vs sprig)

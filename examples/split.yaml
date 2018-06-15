@@ -1,0 +1,11 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: list
+data:
+  foo:
+{{ range split .LIST "," }}
+    - {{ . }}
+    {{- end -}}
+

@@ -55,7 +55,7 @@ func TestListDirectory(t *testing.T) {
 		{
 			name:  "Check yaml files exist",
 			input: "test/TestListDirectory/",
-			want:  []string{"test/TestListDirectory/a.yaml", "test/TestListDirectory/b.yaml", "test/TestListDirectory/empty.yaml"},
+			want:  []string{"test/TestListDirectory/1-resource.yaml", "test/TestListDirectory/2-resource.yaml", "test/TestListDirectory/a.yaml", "test/TestListDirectory/b.yaml", "test/TestListDirectory/empty.yaml"},
 		},
 	}
 
