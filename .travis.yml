@@ -5,11 +5,11 @@ env:
   global:
     - secure: "cLpRQqYGOGH9AOL5xc9flk0H/dmBlo984fDbLn64TKtQ1/JJJxx+drjChjJ2zMHMs3o3qDuG+K1eS9vGTvJ7KGhFRZN4JeZSilC1UrRNujXHtFTL2D4qex4AlLCj9Rh1ZdZVs5MbLr3yEi7PZkF8r/wytlH+Vb+FHFll8tDbCMzrjyEatXj6LOlRtWdajerKeNQAMUWG3fJOHu0hhQcT/dxEwt7O9M+6Dx5mnfRVrx7pKorlgFWEfuHE2xncAIUrevfH7Rv13ybD6gO/MIux9JmObmeV1BKQDxKHYt+puDTEFA6G3czgnCCSdpLRbf8fPKcHubTjdsBSqcLyl+/cDAy54lA7fqtZ64BiTz3npEFFGLNxmDORLhb50CHb78+voOwNNxf3JQkqzITT5al2Cgs8StWWBOTk9318yaps2qL+qyRhwB2QC7q5xXktFDQZc9vHF8pDrAoSTzOZtYzp940Syv00dWkqJovxtEDO+5FBYbxSyE2UB2pn4wYyh8TT2mQfsZHPpKW5tY7U4zibaqmLxN0MSoKA1+VV7tRDyZwsv4MIDH3hHzHLx5szUZAbG2qEtS/Ed6MN1QJOZ3pBpV6PxRJ3UKAVHq8Pe32RzUuSVKeXOCPn4V5DKgJQZuSPn+rsRTPt4r9dtSodzQFSQT6QHWGDAqUnLFYvbddNgxQ="
 language: go
-go: 1.9
+go: "1.10.2"
 install:
-  - curl https://glide.sh/get | sh
+  - go get -u github.com/golang/dep/cmd/dep
 script:
-  - glide install
+  - dep ensure
   - go test -cover $(go list ./... | grep -v /vendor)
   - go vet -x $(go list ./... | grep -v /vendor)
   - mkdir -p bin
