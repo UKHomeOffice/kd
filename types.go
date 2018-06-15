@@ -23,6 +23,9 @@ type ObjectMeta struct {
 	// Not all objects are required to be scoped to a namespace - the value of this field for
 	// those objects will be empty.
 	Namespace string `yaml:"namespace,omitempty"`
+
+	// GenerateName causes kubernetes to generate a random resource name for you on create, it takes the given string and suffixes a random string to it
+	GenerateName string `yaml:"generateName,omitempty"`
 }
 
 // DeploymentStatus is the most recently observed status of the Deployment / Statefulset / DaemonSets.
