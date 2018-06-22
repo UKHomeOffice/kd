@@ -274,12 +274,11 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 	cmd.Stdout = &outbuf
 	cmd.Stderr = &errbuf
 
-	if _, err := stdin.Write(r.Template); err != nil {
-		return err
-	}
-	if err := stdin.Close(); err != nil {
-		return err
-	}
+	go func() {
+		defer stdin.Close()
+		stdin.Write(r.Template)
+	}()
+
 	logInfo.Printf("deploying %s/%s", strings.ToLower(r.Kind), r.Name)
 	if err = cmd.Run(); err != nil {
 		if errbuf.Len() > 0 {
