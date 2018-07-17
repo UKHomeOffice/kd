@@ -105,9 +105,10 @@ To preserve backwards compatibility (parameter order) the following functions
 - hasSuffix
 - [split](#split)
 
-The function for including files is also preserved from before:
+kd specific template functions:
 
 - [file](#file)
+- [secret](#secret)
 
 ### split
 
@@ -182,6 +183,46 @@ data:
     - three
 ```
 
+### secret
+
+`secret` function generates a secret given the parameters `type` and `length`.
+Supported types are:
+
+- alphanum
+- mysql
+- yaml
+
+**NOTE** a secret generated will automatically be set to `create-only` and will 
+not be updated for every deploy.
+
+```yaml
+# secret.yaml
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: test
+data:
+  # generate a mysql safe password of 20 chars
+  password: {{ secret mysql 20 }}
+```
+
+```bash
+$ ./kd -f ./test/secret.yaml --dryrun --debug-templates
+[DEBUG] 2018/07/17 15:10:50 main.go:240: about to open file:./test/secret.yaml
+[DEBUG] 2018/07/17 15:10:50 main.go:260: parsing file:./test/secret.yaml
+[INFO] 2018/07/17 15:10:50 main.go:282: Template:
+apiVersion: v1
+kind: Secret
+metadata:
+  name: test
+type: Opaque
+data:
+  username: bob
+  # Create a secret suitable for mysql of 20 chars
+  password: fD1wS2kzTUVVNUdJcDxGWkhedmQ=
+```
+
 ## Configuration
 
 Configuration can be provided via cli flags and arguments as well as
@@ -198,6 +239,9 @@ NAME:
 USAGE:
    kd [global options] command [command options] [arguments...]
 
+VERSION:
+   v1.0.0
+
 AUTHOR:
    Vaidas Jablonskis <jablonskis@gmail.com>
 
@@ -213,6 +257,8 @@ GLOBAL OPTIONS:
    --kube-server URL, -s URL            kubernetes api server URL [$KUBE_SERVER, $PLUGIN_KUBE_SERVER]
    --kube-token TOKEN, -t TOKEN         kubernetes auth TOKEN [$KUBE_TOKEN, $PLUGIN_KUBE_TOKEN]
    --config value                       Env file location [$CONFIG_FILE, $PLUGIN_CONFIG_FILE]
+   --create-only                        only create resources (do not update, skip if exists). [$CREATE_ONLY, $PLUGIN_CREATE_ONLY]
+   --create-only-resource value         only create specified resources e.g. 'kind/name' (do not update, skip if exists). [$CREATE_ONLY_RESOURCES, $PLUGIN_CREATE_ONLY_RESOURCES]
    --context CONTEXT, -c CONTEXT        kube config CONTEXT [$KUBE_CONTEXT, $PLUGIN_CONTEXT]
    --namespace NAMESPACE, -n NAMESPACE  kubernetes NAMESPACE [$KUBE_NAMESPACE, $PLUGIN_KUBE_NAMESPACE]
    --fail-superseded                    fail deployment if it has been superseded by another deployment. WARNING: there are some bugs in kubernetes. [$FAIL_SUPERSEDED, $PLUGIN_FAIL_SUPERSEDED]
@@ -224,7 +270,6 @@ GLOBAL OPTIONS:
    --check-interval INTERVAL            deployment status check interval INTERVAL (default: 1s) [$CHECK_INTERVAL, $PLUGIN_CHECK_INTERVAL]
    --help, -h                           show help
    --version, -v                        print the version
-
 ```
 
 ## Build

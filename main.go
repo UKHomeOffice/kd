@@ -25,6 +25,11 @@ const (
 	MaxHealthcheckRetries = 3
 	// HealthCheckSleepDuration - the amount of time to sleep (seconds) between healthcehck retries
 	HealthCheckSleepDuration = time.Duration(int64(2)) * time.Second
+	// FlagCreateOnlyResources is the flag syntax to specify create only for only
+	// the specified resource
+	FlagCreateOnlyResources = "create-only-resource"
+	// FlagCreateOnly is the flag syntax to specify create only for all resources
+	FlagCreateOnly = "create-only"
 )
 
 var (
@@ -89,6 +94,17 @@ func main() {
 			Usage:  "Env file location",
 			EnvVar: "CONFIG_FILE,PLUGIN_CONFIG_FILE",
 		},
+		cli.BoolFlag{
+			Name:   FlagCreateOnly,
+			Usage:  "only create resources (do not update, skip if exists).",
+			EnvVar: "CREATE_ONLY,PLUGIN_CREATE_ONLY",
+		},
+		cli.StringSliceFlag{
+			Name:   FlagCreateOnlyResources,
+			Usage:  "only create specified resources e.g. 'kind/name' (do not update, skip if exists).",
+			EnvVar: "CREATE_ONLY_RESOURCES,PLUGIN_CREATE_ONLY_RESOURCES",
+			Value:  nil,
+		},
 		cli.StringFlag{
 			Name:   "context, c",
 			Usage:  "kube config `CONTEXT`",
@@ -150,6 +166,9 @@ func main() {
 	}
 
 	app.Action = func(cx *cli.Context) error {
+		if !cx.Bool("debug") {
+			logDebug = log.New(ioutil.Discard, "", log.Lshortfile)
+		}
 		if err := run(cx); err != nil {
 			logError.Print(err)
 			return cli.NewExitError("", 1)
@@ -163,6 +182,35 @@ func main() {
 }
 
 func runKubectl(c *cli.Context) error {
+	if c.Parent().IsSet(FlagCreateOnlyResources) {
+		if len(c.Parent().StringSlice(FlagCreateOnlyResources)) > 1 {
+			return fmt.Errorf("can only specify a single resource when using run")
+		}
+		resString := c.Parent().StringSlice(FlagCreateOnlyResources)[0]
+		resParts := strings.Split(resString, "/")
+		if len(resParts) != 2 {
+			return fmt.Errorf(
+				"invalid resource type %s, expecting kind/name", resString)
+		}
+		name := resParts[1]
+		kind := resParts[0]
+		exists, err := checkResourceExist(c.Parent(), &ObjectResource{
+			Kind: kind,
+			ObjectMeta: ObjectMeta{
+				Name: name,
+			},
+		})
+		if err != nil {
+			return fmt.Errorf(
+				"problem checking if resource %s/%s exists", name, kind)
+		}
+		if exists {
+			log.Printf(
+				"resource marked as 'create only', skipping app for %s", resString)
+			return nil
+		}
+	}
+
 	// Allow the lib to render args and then create array
 	cmd, err := newKubeCmdSub(c.Parent(), c.Args(), true)
 	if err != nil {
@@ -226,18 +274,19 @@ func run(c *cli.Context) error {
 		if err != nil {
 			return err
 		}
-
-		rendered, err := Render(string(data), EnvToMap())
-		if err != nil {
-			return err
-		}
-
-		for _, d := range splitYamlDocs(rendered) {
-			r := ObjectResource{FileName: fn, Template: []byte(d)}
-			resources = append(resources, &r)
+		for _, d := range splitYamlDocs(string(data)) {
+			rendered, genSecret, err := Render(string(d), EnvToMap())
+			if err != nil {
+				return err
+			}
+			r := &ObjectResource{
+				FileName:   fn,
+				Template:   []byte(rendered),
+				CreateOnly: genSecret,
+			}
+			resources = append(resources, r)
 		}
 	}
-
 	for _, r := range resources {
 		if c.Bool("debug-templates") {
 			logInfo.Printf("Template:\n" + string(r.Template[:]))
@@ -245,6 +294,8 @@ func run(c *cli.Context) error {
 		if err := yaml.Unmarshal(r.Template, &r); err != nil {
 			return err
 		}
+		// Add any flag specific settings for resources
+		updateResFromFlags(c, r)
 
 		// Only perform deploy if dry-run is not set to true
 		if !dryRun {
@@ -266,6 +317,33 @@ func EnvToMap() map[string]string {
 	return m
 }
 
+// updateResFromFlags will inspect a resource and apply any flag specific args
+func updateResFromFlags(c *cli.Context, r *ObjectResource) error {
+	// Add create only option where applicable
+	if c.IsSet(FlagCreateOnly) {
+		r.CreateOnly = true
+		return nil
+	}
+	// Supports specifying kind/names
+	if c.IsSet(FlagCreateOnlyResources) {
+		if len(c.StringSlice(FlagCreateOnlyResources)) > 0 {
+			for _, resString := range c.StringSlice(FlagCreateOnlyResources) {
+				resParts := strings.Split(resString, "/")
+				if len(resParts) != 2 {
+					return fmt.Errorf(
+						"invalid resource type %s, expecting kind/name", resString)
+				}
+				// Is this the resource we are looking for?
+				if strings.ToLower(r.Kind) == strings.ToLower(resParts[0]) &&
+					strings.ToLower(r.Name) == strings.ToLower(resParts[1]) {
+					r.CreateOnly = true
+				}
+			}
+		}
+	}
+	return nil
+}
+
 // splitYamlDocs splits a yaml string into separate yaml documents.
 func splitYamlDocs(data string) []string {
 	r := regexp.MustCompile(`(?m)^---\n`)
@@ -279,6 +357,21 @@ func splitYamlDocs(data string) []string {
 }
 
 func deploy(c *cli.Context, r *ObjectResource) error {
+
+	if r.CreateOnly {
+		exists, err := checkResourceExist(c, r)
+		if err != nil {
+			return fmt.Errorf(
+				"problem checking if resource %s/%s exists", r.Kind, r.Name)
+		}
+		if exists {
+			log.Printf(
+				"skipping deploy for resource (%s/%s) marked as create only.",
+				r.Kind,
+				r.Name)
+			return nil
+		}
+	}
 
 	name := r.Name
 	command := "apply"
@@ -468,6 +561,34 @@ func updateResourceStatus(c *cli.Context, r *ObjectResource) error {
 		return err
 	}
 	return nil
+}
+
+func checkResourceExist(c *cli.Context, r *ObjectResource) (bool, error) {
+	args := []string{"get", r.Kind + "/" + r.Name, "-o", "custom-columns=:.metadata.name", "--no-headers"}
+	cmd, err := newKubeCmd(c, args)
+	if err != nil {
+		return false, err
+	}
+	stderr, _ := cmd.StderrPipe()
+	stdout, _ := cmd.StdoutPipe()
+	if err := cmd.Start(); err != nil {
+		logDebug.Printf("error starting kubectl: %s", err)
+		return false, err
+	}
+	data, _ := ioutil.ReadAll(stdout)
+	if err := cmd.Wait(); err != nil {
+		logDebug.Printf("error with kubectl: %s", err)
+		errData, _ := ioutil.ReadAll(stderr)
+		if strings.Contains("NotFound", string(errData[:])) {
+			return false, nil
+		}
+		return false, err
+	}
+	if strings.TrimSpace(string(data[:])) == r.Name {
+		return true, nil
+	} else {
+		return false, nil
+	}
 }
 
 func newKubeCmd(c *cli.Context, args []string) (*exec.Cmd, error) {
