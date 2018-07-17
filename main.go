@@ -137,6 +137,17 @@ func main() {
 			Value:  time.Duration(1000) * time.Millisecond,
 		},
 	}
+	app.Commands = []cli.Command{
+		cli.Command{
+			Action:          runKubectl,
+			Name:            "run",
+			Usage:           "run [kubectl args] - runs kubectl supporting kd flags / environment options",
+			Description:     "runs kubectl whist supporting the kd global flags",
+			UsageText:       "run [kubectl args] - will run kubectl with all the parameters supplied",
+			SkipFlagParsing: true,
+			OnUsageError:    nil,
+		},
+	}
 
 	app.Action = func(cx *cli.Context) error {
 		if err := run(cx); err != nil {
@@ -149,6 +160,28 @@ func main() {
 	if err := app.Run(os.Args); err != nil {
 		logError.Fatal(err)
 	}
+}
+
+func runKubectl(c *cli.Context) error {
+	// Allow the lib to render args and then create array
+	cmd, err := newKubeCmdSub(c.Parent(), c.Args(), true)
+	if err != nil {
+		return err
+	}
+	if c.Parent().Bool("debug") {
+		logDebug.Printf("About to run %s", cmd.Args)
+	}
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err = cmd.Run(); err != nil {
+		return fmt.Errorf(
+			"error running '%s %s' (use debug to see sensitive params):%s",
+			cmd.Args[0],
+			strings.Join(c.Args(), " "),
+			err)
+	}
+	return nil
 }
 
 func run(c *cli.Context) error {
@@ -439,6 +472,11 @@ func updateResourceStatus(c *cli.Context, r *ObjectResource) error {
 }
 
 func newKubeCmd(c *cli.Context, args []string) (*exec.Cmd, error) {
+	return newKubeCmdSub(c, args, false)
+}
+
+func newKubeCmdSub(c *cli.Context, args []string, subCommand bool) (*exec.Cmd, error) {
+
 	kube := "kubectl"
 	if c.IsSet("namespace") {
 		args = append([]string{"--namespace=" + c.String("namespace")}, args...)
@@ -465,7 +503,7 @@ func newKubeCmd(c *cli.Context, args []string) (*exec.Cmd, error) {
 		args = append([]string{"--server=" + c.String("kube-server")}, args...)
 	}
 
-	flags, err := extraFlags(c)
+	flags, err := extraFlags(c, subCommand)
 	if err != nil {
 		return nil, err
 	}
@@ -474,7 +512,8 @@ func newKubeCmd(c *cli.Context, args []string) (*exec.Cmd, error) {
 	return exec.Command(kube, args...), nil
 }
 
-func extraFlags(c *cli.Context) ([]string, error) {
+// extraFlags will parse out the -- args portion
+func extraFlags(c *cli.Context, subCommand bool) ([]string, error) {
 	var a []string
 
 	if c.NArg() < 1 {
@@ -484,7 +523,10 @@ func extraFlags(c *cli.Context) ([]string, error) {
 	if c.Args()[0] == "--" {
 		return c.Args()[1:], nil
 	}
-
+	// When we are called from a sub command we don't want the sub command bits
+	if subCommand {
+		return a, nil
+	}
 	return c.Args(), nil
 }
 

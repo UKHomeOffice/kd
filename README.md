@@ -80,6 +80,15 @@ $ kd --context=mykube --namespace=testing --file nginx-deployment.yaml
 
 You can fail an ongoing deployment if there's been a new deployment by adding `--fail-superseded` flag.
 
+### Run command
+
+You can run kubectl with the support of the same flags and environment variables
+that kd supports to simplify scripted deployments.
+
+```bash
+$ export KUBE_NAMESPACE=testland
+$ kd run get po -l app=myapp -o custom-columns=:.metadata.name --no-headers
+```
 
 ## Templating
 
@@ -183,27 +192,27 @@ specified after `--` will be passed onto kubectl.
 
 ```bash
 $ kd --help
-
 NAME:
    kd - simple kubernetes resources deployment tool
 
 USAGE:
    kd [global options] command [command options] [arguments...]
 
-VERSION:
-   v0.3.0
-
 AUTHOR:
    Vaidas Jablonskis <jablonskis@gmail.com>
 
 COMMANDS:
+     run      run [kubectl args] - runs kubectl supporting kd flags / environment options
      help, h  Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
    --debug                              debug output [$DEBUG, $PLUGIN_DEBUG]
+   --debug-templates                    debug template output [$DEBUG_TEMPLATES, $PLUGIN_DEBUG_TEMPLATES]
+   --dryrun                             if true, kd will exit prior to deployment [$DRY_RUN]
    --insecure-skip-tls-verify           if true, the server's certificate will not be checked for validity [$INSECURE_SKIP_TLS_VERIFY, $PLUGIN_INSECURE_SKIP_TLS_VERIFY]
    --kube-server URL, -s URL            kubernetes api server URL [$KUBE_SERVER, $PLUGIN_KUBE_SERVER]
    --kube-token TOKEN, -t TOKEN         kubernetes auth TOKEN [$KUBE_TOKEN, $PLUGIN_KUBE_TOKEN]
+   --config value                       Env file location [$CONFIG_FILE, $PLUGIN_CONFIG_FILE]
    --context CONTEXT, -c CONTEXT        kube config CONTEXT [$KUBE_CONTEXT, $PLUGIN_CONTEXT]
    --namespace NAMESPACE, -n NAMESPACE  kubernetes NAMESPACE [$KUBE_NAMESPACE, $PLUGIN_KUBE_NAMESPACE]
    --fail-superseded                    fail deployment if it has been superseded by another deployment. WARNING: there are some bugs in kubernetes. [$FAIL_SUPERSEDED, $PLUGIN_FAIL_SUPERSEDED]
@@ -215,8 +224,8 @@ GLOBAL OPTIONS:
    --check-interval INTERVAL            deployment status check interval INTERVAL (default: 1s) [$CHECK_INTERVAL, $PLUGIN_CHECK_INTERVAL]
    --help, -h                           show help
    --version, -v                        print the version
-```
 
+```
 
 ## Build
 
