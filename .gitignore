@@ -1,3 +1,4 @@
 bin/*
 kd
 /vendor
+*.log

@@ -229,25 +229,12 @@ GLOBAL OPTIONS:
 
 ## Build
 
-Dependencies are located in the vendor directory and managed using
-[glide](https://github.com/Masterminds/glide/blob/master/README.md) cli tool.
-Install glide e.g. `curl https://glide.sh/get | sh` then use it to *install*
-vendored libs and then build e.g:
-```
-glide install
-go test -v -cover
-
-mkdir -p bin
-GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=dev+git" -o bin/kd_linux_amd64
-```
+To build kd just run `make`.
 
 You can also build `kd` in a docker container:
 
 ```bash
-docker run --rm -v $PWD:/go/src/github.com/UKHomeOffice/kd -w /go/src/github.com/UKHomeOffice/kd -ti golang:1.6 bash
-cd /go/src/UKHomeOffice/kd
-go get
-GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=dev+git" -o bin/kd_linux_amd64
+docker run --rm -v $PWD:/go/src/github.com/UKHomeOffice/kd -w /go/src/github.com/UKHomeOffice/kd -ti golang:1.10 make
 ```
 
 ## Release process

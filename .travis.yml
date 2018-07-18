@@ -6,18 +6,9 @@ env:
     - secure: "cLpRQqYGOGH9AOL5xc9flk0H/dmBlo984fDbLn64TKtQ1/JJJxx+drjChjJ2zMHMs3o3qDuG+K1eS9vGTvJ7KGhFRZN4JeZSilC1UrRNujXHtFTL2D4qex4AlLCj9Rh1ZdZVs5MbLr3yEi7PZkF8r/wytlH+Vb+FHFll8tDbCMzrjyEatXj6LOlRtWdajerKeNQAMUWG3fJOHu0hhQcT/dxEwt7O9M+6Dx5mnfRVrx7pKorlgFWEfuHE2xncAIUrevfH7Rv13ybD6gO/MIux9JmObmeV1BKQDxKHYt+puDTEFA6G3czgnCCSdpLRbf8fPKcHubTjdsBSqcLyl+/cDAy54lA7fqtZ64BiTz3npEFFGLNxmDORLhb50CHb78+voOwNNxf3JQkqzITT5al2Cgs8StWWBOTk9318yaps2qL+qyRhwB2QC7q5xXktFDQZc9vHF8pDrAoSTzOZtYzp940Syv00dWkqJovxtEDO+5FBYbxSyE2UB2pn4wYyh8TT2mQfsZHPpKW5tY7U4zibaqmLxN0MSoKA1+VV7tRDyZwsv4MIDH3hHzHLx5szUZAbG2qEtS/Ed6MN1QJOZ3pBpV6PxRJ3UKAVHq8Pe32RzUuSVKeXOCPn4V5DKgJQZuSPn+rsRTPt4r9dtSodzQFSQT6QHWGDAqUnLFYvbddNgxQ="
 language: go
 go: "1.10.2"
-install:
-  - go get -u github.com/golang/dep/cmd/dep
 script:
-  - dep ensure
-  - go test -cover $(go list ./... | grep -v /vendor)
-  - go vet -x $(go list ./... | grep -v /vendor)
-  - mkdir -p bin
-  - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=${TRAVIS_TAG:-git+${TRAVIS_COMMIT}}" -o bin/kd_linux_amd64
-  - GOOS=linux GOARCH=386 CGO_ENABLED=0 go build -ldflags "-X main.Version=${TRAVIS_TAG:-git+${TRAVIS_COMMIT}}" -o bin/kd_linux_386
-  - GOOS=linux GOARCH=arm CGO_ENABLED=0 go build -ldflags "-X main.Version=${TRAVIS_TAG:-git+${TRAVIS_COMMIT}}" -o bin/kd_linux_arm
-  - GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=${TRAVIS_TAG:-git+${TRAVIS_COMMIT}}" -o bin/kd_darwin_amd64
-  - GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-X main.Version=${TRAVIS_TAG:-git+${TRAVIS_COMMIT}}" -o bin/kd_windows_amd64.exe
+  - make testall
+  - make release
   - if ([[ ${TRAVIS_BRANCH} == "master" ]] && [[ ${TRAVIS_EVENT_TYPE} == "push" ]]) || [[ -n ${TRAVIS_TAG} ]]; then
     docker login -u "ukhomeofficedigital+kubernetes_deploy_kd" -p ${DOCKER_PASSWORD} quay.io;
     docker build -t quay.io/ukhomeofficedigital/kd:${TRAVIS_TAG:-latest} .;
@@ -31,8 +22,6 @@ deploy:
     secure: YEn+vc16VyuFhGlEjTzzpKXC12i4jZZNVUTFRI8/SxV1+amMkuiewtJhNRlvEKdBQt0BTq32Ae1Z1I/i07WIBB4G0rjJTG6zrKYhE53pF5zVqEy90QSylOcZAlRI82h1wT1pui5DKynXAYZGwnnj3uTEIeRWuJanklhH2cNSSl9LziSVTRJxIBObp7IvQ9nb79TF44i788RbPoYOZXBUvgBhUAtD5LieuUZnEDxMJTLLIr47iI4eTOujwg49KRHxIe6PGJDDAy8ERAtPnlzj8kTidM2YWEExqzyhXNsQhB1hurlevLt92a9abTZpHdTS/5sAnnVfx4q7g+TXJOJQ8LVxsLfFgvvVVrkLUOk643yMkh0H6nJi6qymAZ/izuGYV/CgoYuU0YcYICOkuVo0Eiy8w83zvX/qRnaqJf52W6O6Bf/F6Ll7sajDQNpswQvzl3iEQa0C9VZhNcGyvnMwIVerUdge2vrpQP/BvySNcdc1u6U+q4lIeuMAOTQ0eWuxofpiSVf1rH78yUDNC+j4XeNsDb1w+0yzjIt+D2i5eGpVmyHNmy8ZS/PWaTnnDlU/3xWANg6QGZ78dzuREA48Idhiuc3cJcWzmKJq1awF4eLkUQQH7R5xpsAV8OcnDS081yqMyxDuguCoMFzd55Yp/FmJsgg230kLPlarstQsEx8=
   file:
     - ${TRAVIS_BUILD_DIR}/bin/kd_linux_amd64
-    - ${TRAVIS_BUILD_DIR}/bin/kd_linux_386
-    - ${TRAVIS_BUILD_DIR}/bin/kd_linux_arm
     - ${TRAVIS_BUILD_DIR}/bin/kd_darwin_amd64
     - ${TRAVIS_BUILD_DIR}/bin/kd_windows_amd64.exe
   on:
