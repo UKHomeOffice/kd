@@ -138,7 +138,7 @@ func main() {
 		},
 	}
 	app.Commands = []cli.Command{
-		cli.Command{
+		{
 			Action:          runKubectl,
 			Name:            "run",
 			Usage:           "run [kubectl args] - runs kubectl supporting kd flags / environment options",
