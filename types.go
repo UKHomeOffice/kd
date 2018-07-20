@@ -8,6 +8,7 @@ type ObjectResource struct {
 	FileName         string `yaml:"-"`
 	DeploymentStatus `yaml:"status,omitempty"`
 	ObjectSpec       `yaml:"spec"`
+	CreateOnly       bool `yaml:"-"`
 }
 
 // ObjectMeta is a resource metadata that all persisted resources must have
