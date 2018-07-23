@@ -34,8 +34,8 @@ build:
 release: clean deps release-deps
 	@echo "--> Compiling all the static binaries"
 	mkdir -p bin
-	gox -arch="${ARCHITECTURES}" -os="${PLATFORMS}" -ldflags "-w ${LFLAGS}" -output=./bin/{{.Dir}}_{{.OS}}_{{.Arch}} ./...
-	cd ./bin && shasum * > checksum.txt && cd -
+	CGO_ENABLED=0 gox -arch="${ARCHITECTURES}" -os="${PLATFORMS}" -ldflags "-w ${LFLAGS}" -output=./bin/{{.Dir}}_{{.OS}}_{{.Arch}} ./...
+	cd ./bin && sha256sum * > checksum.txt && cd -
 
 clean:
 	rm -rf ./bin 2>/dev/null
