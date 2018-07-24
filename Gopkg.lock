@@ -26,6 +26,14 @@
   version = "v1.0.1"
 
 [[projects]]
+  digest = "1:18d3339287ed981065cbffedb0dc81196638666d04c83141e973a9bfad1be4a4"
+  name = "github.com/cavaliercoder/grab"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "466b5c0dd1d077be6de521d4e753734b17899a4d"
+  version = "v2.0.0"
+
+[[projects]]
   digest = "1:8f8811f9be822914c3a25c6a071e93beb4c805d7b026cbf298bc577bc1cc945b"
   name = "github.com/google/uuid"
   packages = ["."]
@@ -87,6 +95,7 @@
   analyzer-version = 1
   input-imports = [
     "github.com/Masterminds/sprig",
+    "github.com/cavaliercoder/grab",
     "github.com/joho/godotenv",
     "github.com/urfave/cli",
     "gopkg.in/yaml.v2",

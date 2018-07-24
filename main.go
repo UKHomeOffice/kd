@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cavaliercoder/grab"
 	"github.com/joho/godotenv"
 	"github.com/urfave/cli"
 	yaml "gopkg.in/yaml.v2"
@@ -30,24 +32,39 @@ const (
 	FlagCreateOnlyResources = "create-only-resource"
 	// FlagCreateOnly is the flag syntax to specify create only for all resources
 	FlagCreateOnly = "create-only"
+	// FlagCa specifies the synatx for specifying a CA to trust
+	FlagCa = "certificate-authority"
+	// FlagCaData is the flag to specify that a PEM encoded CA is being specified
+	FlagCaData = "certificate-authority-data"
+	// FlagCaFile is the sytax to specify a CA file when FlagCa specifies a URL or
+	// when FlagCaData is set
+	FlagCaFile = "certificate-authority-file"
 )
 
 var (
 	// Version is set at compile time, passing -ldflags "-X main.Version=<build version>"
 	Version string
 
-	logInfo  *log.Logger
-	logError *log.Logger
-	logDebug *log.Logger
+	logInfo    *log.Logger
+	logError   *log.Logger
+	logDebug   *log.Logger
+	logDebugIf *log.Logger
 
 	// dryRun Defaults to false
 	dryRun bool
+
+	// Files to delete on exit
+	tmpDir string = ""
+
+	// caFile
+	caFile string = ""
 )
 
 func init() {
 	logInfo = log.New(os.Stdout, "[INFO] ", log.Ldate|log.Ltime|log.Lshortfile)
 	logError = log.New(os.Stderr, "[ERROR] ", log.Ldate|log.Ltime|log.Lshortfile)
-	logDebug = log.New(os.Stderr, "[DEBUG] ", log.Ldate|log.Ltime|log.Lshortfile)
+	logDebugIf = log.New(os.Stderr, "[DEBUG] ", log.Ldate|log.Ltime|log.Lshortfile)
+	logDebug = log.New(ioutil.Discard, "", log.Lshortfile)
 }
 
 func main() {
@@ -121,18 +138,18 @@ func main() {
 			EnvVar: "FAIL_SUPERSEDED,PLUGIN_FAIL_SUPERSEDED",
 		},
 		cli.StringFlag{
-			Name:   "certificate-authority",
-			Usage:  "the path to a file containing the CA for kubernetes API `PATH`",
+			Name:   FlagCa,
+			Usage:  "the path (or URL) to a file containing the CA for kubernetes API `PATH`",
 			EnvVar: "KUBE_CERTIFICATE_AUTHORITY,PLUGIN_KUBE_CERTIFICATE_AUHORITY",
 		},
 		cli.StringFlag{
-			Name:   "certificate-authority-data",
+			Name:   FlagCaData,
 			Usage:  "the certificate authority data for the kubernetes API `PATH`",
 			EnvVar: "KUBE_CERTIFICATE_AUTHORITY_DATA,PLUGIN_KUBE_CERTIFICATE_AUHORITY_DATA",
 		},
 		cli.StringFlag{
-			Name:  "certificate-authority-file",
-			Usage: "the path to file the certificate authority file from certifacte-authority-data option",
+			Name:  FlagCaFile,
+			Usage: "the path to save certificate authority data when data or a URL is specified",
 			Value: "/tmp/kube-ca.pem",
 		},
 		cli.StringSliceFlag{
@@ -166,9 +183,6 @@ func main() {
 	}
 
 	app.Action = func(cx *cli.Context) error {
-		if !cx.Bool("debug") {
-			logDebug = log.New(ioutil.Discard, "", log.Lshortfile)
-		}
 		if err := run(cx); err != nil {
 			logError.Print(err)
 			return cli.NewExitError("", 1)
@@ -176,12 +190,24 @@ func main() {
 
 		return nil
 	}
+	defer cleanup()
 	if err := app.Run(os.Args); err != nil {
 		logError.Fatal(err)
 	}
 }
 
+// Delete any temparay files
+func cleanup() {
+	if len(tmpDir) > 0 {
+		logDebug.Printf("cleaning up %s", tmpDir)
+		os.RemoveAll(tmpDir)
+	}
+}
+
 func runKubectl(c *cli.Context) error {
+	if c.Parent().Bool("debug") {
+		logDebug = logDebugIf
+	}
 	if c.Parent().IsSet(FlagCreateOnlyResources) {
 		if len(c.Parent().StringSlice(FlagCreateOnlyResources)) > 1 {
 			return fmt.Errorf("can only specify a single resource when using run")
@@ -216,9 +242,7 @@ func runKubectl(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	if c.Parent().Bool("debug") {
-		logDebug.Printf("About to run %s", cmd.Args)
-	}
+	logDebug.Printf("About to run %s", cmd.Args)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -233,6 +257,9 @@ func runKubectl(c *cli.Context) error {
 }
 
 func run(c *cli.Context) error {
+	if c.Bool("debug") {
+		logDebug = logDebugIf
+	}
 	// Check we have some files to process
 	if len(c.StringSlice("file")) == 0 {
 		return errors.New("no kubernetes resource files specified")
@@ -607,14 +634,18 @@ func newKubeCmdSub(c *cli.Context, args []string, subCommand bool) (*exec.Cmd, e
 	if c.IsSet("kube-token") {
 		args = append([]string{"--token=" + c.String("kube-token")}, args...)
 	}
-	if c.IsSet("certificate-authority-data") {
-		if err := createCertificateAuthority(c.String("certificate-authority-file"), c.String("certificate-authority-data")); err != nil {
+	if c.IsSet(FlagCaData) {
+		if err := createCertificateAuthority(c.String(FlagCaFile), c.String(FlagCaData)); err != nil {
 			return nil, err
 		}
-		args = append([]string{"--certificate-authority=" + c.String("certificate-authority-file")}, args...)
+		args = append([]string{"--certificate-authority=" + c.String(FlagCaFile)}, args...)
 	}
-	if c.IsSet("certificate-authority") {
-		args = append([]string{"--certificate-authority=" + c.String("certificate-authority")}, args...)
+	if c.IsSet(FlagCa) {
+		caFile, err := getCaFileAndDownloadIfRequired(c)
+		if err != nil {
+			return nil, err
+		}
+		args = append([]string{"--certificate-authority=" + caFile}, args...)
 	}
 	if c.IsSet("insecure-skip-tls-verify") {
 		args = append([]string{"--insecure-skip-tls-verify"}, args...)
@@ -630,6 +661,38 @@ func newKubeCmdSub(c *cli.Context, args []string, subCommand bool) (*exec.Cmd, e
 	args = append(args, flags...)
 
 	return exec.Command(kube, args...), nil
+}
+
+// getCaFileAndDownloadIfRequired will obtain a CA file on disk - if required
+func getCaFileAndDownloadIfRequired(c *cli.Context) (string, error) {
+	// have we done this already?
+	if len(caFile) > 0 {
+		return caFile, nil
+	}
+	ca := c.String(FlagCa)
+	// Detect if using a URL scheme
+	if uri, _ := url.ParseRequestURI(ca); uri != nil {
+		if uri.Scheme == "" {
+			// Not a URL, get out of here
+			return ca, nil
+		}
+	}
+	// Where should we save the ca?
+	if c.IsSet(FlagCaFile) {
+		caFile = c.String(FlagCaFile)
+	} else {
+		// This is used by cleanup
+		tmpDir, _ = ioutil.TempDir("", "kd")
+		caFile = filepath.Join(tmpDir, "kube-ca.pem")
+	}
+	logDebug.Printf("ca file specified as %s, to download from %s", caFile, ca)
+	// download the ca...
+	resp, err := grab.Get(caFile, ca)
+	if err != nil {
+		return "", fmt.Errorf(
+			"problem downloading ca from %s:%s", resp.Filename, err)
+	}
+	return caFile, nil
 }
 
 // extraFlags will parse out the -- args portion
