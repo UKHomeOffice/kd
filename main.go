@@ -107,6 +107,16 @@ func main() {
 			EnvVar: "KUBE_TOKEN,PLUGIN_KUBE_TOKEN",
 		},
 		cli.StringFlag{
+			Name:   "kube-username, u",
+			Usage:  "kubernetes auth `USERNAME`",
+			EnvVar: "KUBE_USERNAME,PLUGIN_KUBE_USERNAME",
+		},
+		cli.StringFlag{
+			Name:   "kube-password, p",
+			Usage:  "kubernetes auth `PASSWORD`",
+			EnvVar: "KUBE_PASSWORD,PLUGIN_KUBE_PASSWORD",
+		},
+		cli.StringFlag{
 			Name:   "config",
 			Usage:  "Env file location",
 			EnvVar: "CONFIG_FILE,PLUGIN_CONFIG_FILE",
@@ -633,6 +643,13 @@ func newKubeCmdSub(c *cli.Context, args []string, subCommand bool) (*exec.Cmd, e
 	}
 	if c.IsSet("kube-token") {
 		args = append([]string{"--token=" + c.String("kube-token")}, args...)
+	} else {
+		if c.IsSet("kube-username") {
+			args = append([]string{"--username=" + c.String("kube-username")}, args...)
+		}
+		if c.IsSet("kube-password") {
+			args = append([]string{"--password=" + c.String("kube-password")}, args...)
+		}
 	}
 	if c.IsSet(FlagCaData) {
 		if err := createCertificateAuthority(c.String(FlagCaFile), c.String(FlagCaData)); err != nil {

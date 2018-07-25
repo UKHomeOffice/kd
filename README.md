@@ -192,7 +192,7 @@ Supported types are:
 - mysql
 - yaml
 
-**NOTE** a secret generated will automatically be set to `create-only` and will 
+**NOTE** a secret generated will automatically be set to `create-only` and will
 not be updated for every deploy.
 
 ```yaml
@@ -240,7 +240,7 @@ USAGE:
    kd [global options] command [command options] [arguments...]
 
 VERSION:
-   v1.0.0
+   v1.10.1
 
 AUTHOR:
    Vaidas Jablonskis <jablonskis@gmail.com>
@@ -250,26 +250,28 @@ COMMANDS:
      help, h  Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-   --debug                              debug output [$DEBUG, $PLUGIN_DEBUG]
-   --debug-templates                    debug template output [$DEBUG_TEMPLATES, $PLUGIN_DEBUG_TEMPLATES]
-   --dryrun                             if true, kd will exit prior to deployment [$DRY_RUN]
-   --insecure-skip-tls-verify           if true, the server's certificate will not be checked for validity [$INSECURE_SKIP_TLS_VERIFY, $PLUGIN_INSECURE_SKIP_TLS_VERIFY]
-   --kube-server URL, -s URL            kubernetes api server URL [$KUBE_SERVER, $PLUGIN_KUBE_SERVER]
-   --kube-token TOKEN, -t TOKEN         kubernetes auth TOKEN [$KUBE_TOKEN, $PLUGIN_KUBE_TOKEN]
-   --config value                       Env file location [$CONFIG_FILE, $PLUGIN_CONFIG_FILE]
-   --create-only                        only create resources (do not update, skip if exists). [$CREATE_ONLY, $PLUGIN_CREATE_ONLY]
-   --create-only-resource value         only create specified resources e.g. 'kind/name' (do not update, skip if exists). [$CREATE_ONLY_RESOURCES, $PLUGIN_CREATE_ONLY_RESOURCES]
-   --context CONTEXT, -c CONTEXT        kube config CONTEXT [$KUBE_CONTEXT, $PLUGIN_CONTEXT]
-   --namespace NAMESPACE, -n NAMESPACE  kubernetes NAMESPACE [$KUBE_NAMESPACE, $PLUGIN_KUBE_NAMESPACE]
-   --fail-superseded                    fail deployment if it has been superseded by another deployment. WARNING: there are some bugs in kubernetes. [$FAIL_SUPERSEDED, $PLUGIN_FAIL_SUPERSEDED]
-   --certificate-authority PATH         the path to a file containing the CA for kubernetes API PATH [$KUBE_CERTIFICATE_AUTHORITY, $PLUGIN_KUBE_CERTIFICATE_AUHORITY]
-   --certificate-authority-data PATH    the certificate authority data for the kubernetes API PATH [$KUBE_CERTIFICATE_AUTHORITY_DATA, $PLUGIN_KUBE_CERTIFICATE_AUHORITY_DATA]
-   --certificate-authority-file value   the path to file the certificate authority file from certifacte-authority-data option (default: "/tmp/kube-ca.pem")
-   --file PATH, -f PATH                 the path to a file or directory containing kubernetes resource/s PATH [$FILES, $PLUGIN_FILES]
-   --timeout TIMEOUT, -T TIMEOUT        the amount of time to wait for a successful deployment TIMEOUT (default: 3m0s) [$TIMEOUT, $PLUGIN_TIMEOUT]
-   --check-interval INTERVAL            deployment status check interval INTERVAL (default: 1s) [$CHECK_INTERVAL, $PLUGIN_CHECK_INTERVAL]
-   --help, -h                           show help
-   --version, -v                        print the version
+   --debug                                debug output [$DEBUG, $PLUGIN_DEBUG]
+   --debug-templates                      debug template output [$DEBUG_TEMPLATES, $PLUGIN_DEBUG_TEMPLATES]
+   --dryrun                               if true, kd will exit prior to deployment [$DRY_RUN]
+   --insecure-skip-tls-verify             if true, the server's certificate will not be checked for validity [$INSECURE_SKIP_TLS_VERIFY, $PLUGIN_INSECURE_SKIP_TLS_VERIFY]
+   --kube-server URL, -s URL              kubernetes api server URL [$KUBE_SERVER, $PLUGIN_KUBE_SERVER]
+   --kube-token TOKEN, -t TOKEN           kubernetes auth TOKEN [$KUBE_TOKEN, $PLUGIN_KUBE_TOKEN]
+   --kube-username USERNAME, -u USERNAME  kubernetes auth USERNAME [$KUBE_USERNAME, $PLUGIN_KUBE_USERNAME]
+   --kube-password PASSWORD, -p PASSWORD  kubernetes auth PASSWORD [$KUBE_PASSWORD, $PLUGIN_KUBE_PASSWORD]
+   --config value                         Env file location [$CONFIG_FILE, $PLUGIN_CONFIG_FILE]
+   --create-only                          only create resources (do not update, skip if exists). [$CREATE_ONLY, $PLUGIN_CREATE_ONLY]
+   --create-only-resource value           only create specified resources e.g. 'kind/name' (do not update, skip if exists). [$CREATE_ONLY_RESOURCES, $PLUGIN_CREATE_ONLY_RESOURCES]
+   --context CONTEXT, -c CONTEXT          kube config CONTEXT [$KUBE_CONTEXT, $PLUGIN_CONTEXT]
+   --namespace NAMESPACE, -n NAMESPACE    kubernetes NAMESPACE [$KUBE_NAMESPACE, $PLUGIN_KUBE_NAMESPACE]
+   --fail-superseded                      fail deployment if it has been superseded by another deployment. WARNING: there are some bugs in kubernetes. [$FAIL_SUPERSEDED, $PLUGIN_FAIL_SUPERSEDED]
+   --certificate-authority PATH           the path (or URL) to a file containing the CA for kubernetes API PATH [$KUBE_CERTIFICATE_AUTHORITY, $PLUGIN_KUBE_CERTIFICATE_AUHORITY]
+   --certificate-authority-data PATH      the certificate authority data for the kubernetes API PATH [$KUBE_CERTIFICATE_AUTHORITY_DATA, $PLUGIN_KUBE_CERTIFICATE_AUHORITY_DATA]
+   --certificate-authority-file value     the path to save certificate authority data when data or a URL is specified (default: "/tmp/kube-ca.pem")
+   --file PATH, -f PATH                   the path to a file or directory containing kubernetes resource/s PATH [$FILES, $PLUGIN_FILES]
+   --timeout TIMEOUT, -T TIMEOUT          the amount of time to wait for a successful deployment TIMEOUT (default: 3m0s) [$TIMEOUT, $PLUGIN_TIMEOUT]
+   --check-interval INTERVAL              deployment status check interval INTERVAL (default: 1s) [$CHECK_INTERVAL, $PLUGIN_CHECK_INTERVAL]
+   --help, -h                             show help
+   --version, -v                          print the version
 ```
 
 ## Build
