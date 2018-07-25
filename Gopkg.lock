@@ -74,7 +74,7 @@
   version = "v1.20.0"
 
 [[projects]]
-  digest = "1:3329dfb0947324f7216b5ab9ce5d184f1387bb77533ed733135befc14aff07d2"
+  digest = "1:7b1c378a71f617ec07229a1fcbb90b6a5344295823e1d732398f50fd9ae4bbec"
   name = "golang.org/x/crypto"
   packages = [
     "pbkdf2",
