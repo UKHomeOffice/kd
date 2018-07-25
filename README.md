@@ -231,7 +231,7 @@ environment variables.
 It supports end of flags `--` parameter, any flags or arguments that are
 specified after `--` will be passed onto kubectl.
 
-```bash
+```
 $ kd --help
 NAME:
    kd - simple kubernetes resources deployment tool
@@ -240,7 +240,7 @@ USAGE:
    kd [global options] command [command options] [arguments...]
 
 VERSION:
-   v1.10.1
+   v1.10.2
 
 AUTHOR:
    Vaidas Jablonskis <jablonskis@gmail.com>
@@ -264,10 +264,10 @@ GLOBAL OPTIONS:
    --context CONTEXT, -c CONTEXT          kube config CONTEXT [$KUBE_CONTEXT, $PLUGIN_CONTEXT]
    --namespace NAMESPACE, -n NAMESPACE    kubernetes NAMESPACE [$KUBE_NAMESPACE, $PLUGIN_KUBE_NAMESPACE]
    --fail-superseded                      fail deployment if it has been superseded by another deployment. WARNING: there are some bugs in kubernetes. [$FAIL_SUPERSEDED, $PLUGIN_FAIL_SUPERSEDED]
-   --certificate-authority PATH           the path (or URL) to a file containing the CA for kubernetes API PATH [$KUBE_CERTIFICATE_AUTHORITY, $PLUGIN_KUBE_CERTIFICATE_AUHORITY]
-   --certificate-authority-data PATH      the certificate authority data for the kubernetes API PATH [$KUBE_CERTIFICATE_AUTHORITY_DATA, $PLUGIN_KUBE_CERTIFICATE_AUHORITY_DATA]
-   --certificate-authority-file value     the path to save certificate authority data when data or a URL is specified (default: "/tmp/kube-ca.pem")
-   --file PATH, -f PATH                   the path to a file or directory containing kubernetes resource/s PATH [$FILES, $PLUGIN_FILES]
+   --certificate-authority PATH           the path (or URL) to a file containing the CA for kubernetes API PATH [$KUBE_CERTIFICATE_AUTHORITY, $PLUGIN_KUBE_CERTIFICATE_AUTHORITY]
+   --certificate-authority-data PATH      the certificate authority data for the kubernetes API PATH [$KUBE_CERTIFICATE_AUTHORITY_DATA, $PLUGIN_KUBE_CERTIFICATE_AUTHORITY_DATA]
+   --certificate-authority-file value     the path to save certificate authority data to when data or a URL is specified (default: "/tmp/kube-ca.pem") [$KUBE_CERTIFICATE_AUTHORITY_FILE, $PLUGIN_KUBE_CERTIFICATE_AUTHORITY_FILE]
+   --file PATH, -f PATH                   the path to a file or directory containing kubernetes resources PATH [$FILES, $PLUGIN_FILES]
    --timeout TIMEOUT, -T TIMEOUT          the amount of time to wait for a successful deployment TIMEOUT (default: 3m0s) [$TIMEOUT, $PLUGIN_TIMEOUT]
    --check-interval INTERVAL              deployment status check interval INTERVAL (default: 1s) [$CHECK_INTERVAL, $PLUGIN_CHECK_INTERVAL]
    --help, -h                             show help
