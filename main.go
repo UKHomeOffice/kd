@@ -150,21 +150,22 @@ func main() {
 		cli.StringFlag{
 			Name:   FlagCa,
 			Usage:  "the path (or URL) to a file containing the CA for kubernetes API `PATH`",
-			EnvVar: "KUBE_CERTIFICATE_AUTHORITY,PLUGIN_KUBE_CERTIFICATE_AUHORITY",
+			EnvVar: "KUBE_CERTIFICATE_AUTHORITY,PLUGIN_KUBE_CERTIFICATE_AUTHORITY",
 		},
 		cli.StringFlag{
 			Name:   FlagCaData,
 			Usage:  "the certificate authority data for the kubernetes API `PATH`",
-			EnvVar: "KUBE_CERTIFICATE_AUTHORITY_DATA,PLUGIN_KUBE_CERTIFICATE_AUHORITY_DATA",
+			EnvVar: "KUBE_CERTIFICATE_AUTHORITY_DATA,PLUGIN_KUBE_CERTIFICATE_AUTHORITY_DATA",
 		},
 		cli.StringFlag{
-			Name:  FlagCaFile,
-			Usage: "the path to save certificate authority data when data or a URL is specified",
-			Value: "/tmp/kube-ca.pem",
+			Name:   FlagCaFile,
+			Usage:  "the path to save certificate authority data to when data or a URL is specified",
+			Value:  "/tmp/kube-ca.pem",
+			EnvVar: "KUBE_CERTIFICATE_AUTHORITY_FILE,PLUGIN_KUBE_CERTIFICATE_AUTHORITY_FILE",
 		},
 		cli.StringSliceFlag{
 			Name:   "file, f",
-			Usage:  "the path to a file or directory containing kubernetes resource/s `PATH`",
+			Usage:  "the path to a file or directory containing kubernetes resources `PATH`",
 			EnvVar: "FILES,PLUGIN_FILES",
 		},
 		cli.DurationFlag{
@@ -702,6 +703,15 @@ func getCaFileAndDownloadIfRequired(c *cli.Context) (string, error) {
 		tmpDir, _ = ioutil.TempDir("", "kd")
 		caFile = filepath.Join(tmpDir, "kube-ca.pem")
 	}
+
+	// skip download if ca file already exists
+	if found, err := FilesExists(caFile); err != nil {
+		return "", err
+	} else if found {
+		logDebug.Printf("ca file (%s) already exists, skipping download from: %s", caFile, ca)
+		return caFile, nil
+	}
+
 	logDebug.Printf("ca file specified as %s, to download from %s", caFile, ca)
 	// download the ca...
 	resp, err := grab.Get(caFile, ca)
