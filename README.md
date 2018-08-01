@@ -80,6 +80,35 @@ $ kd --context=mykube --namespace=testing --file nginx-deployment.yaml
 
 You can fail an ongoing deployment if there's been a new deployment by adding `--fail-superseded` flag.
 
+### Replace
+
+kd will use the `apply` verb to create / update resources which is [appropriate
+in most cases](https://kubernetes.io/docs/concepts/cluster-administration/manage-deployment/#in-place-updates-of-resources).
+
+The flag `--replace` can be used to override this behaviour can be useful in 
+some very specific scenarios but the result is a [disruptive update](https://kubernetes.io/docs/concepts/cluster-administration/manage-deployment/#disruptive-updates)
+which should not be the default.
+
+To have the desired affect when updating objects, you may need to use optional
+kubectl arguments e.g.: `-- --force` to force deletion of some objects. **NOTE**
+history of an object is lost with `--force`.
+
+**NOTE** `apply` is used internally to create the resource if it doesn't exist.
+
+#### Cronjobs
+
+When a cronjob object is created and only updated, any old jobs will continue
+and some fields are imutable so use of the force option may be required.
+
+E.g. to update a large cron job use `kd --replace -f cronjob.yml -- --force`.
+
+#### Large Objects e.g. Configmaps
+
+As an apply uses 'patch' internally, there is a limit to the size of objects
+that can be updated this way.
+
+E.g. to update a large config map use `kd --replace -f myconfigmap.yml -- --force`.
+
 ### Run command
 
 You can run kubectl with the support of the same flags and environment variables
@@ -261,6 +290,7 @@ GLOBAL OPTIONS:
    --config value                         Env file location [$CONFIG_FILE, $PLUGIN_CONFIG_FILE]
    --create-only                          only create resources (do not update, skip if exists). [$CREATE_ONLY, $PLUGIN_CREATE_ONLY]
    --create-only-resource value           only create specified resources e.g. 'kind/name' (do not update, skip if exists). [$CREATE_ONLY_RESOURCES, $PLUGIN_CREATE_ONLY_RESOURCES]
+   --replace                              use replace instead of apply for updating objects [$KUBE_REPLACE, $PLUGIN_KUBE_REPLACE]
    --context CONTEXT, -c CONTEXT          kube config CONTEXT [$KUBE_CONTEXT, $PLUGIN_CONTEXT]
    --namespace NAMESPACE, -n NAMESPACE    kubernetes NAMESPACE [$KUBE_NAMESPACE, $PLUGIN_KUBE_NAMESPACE]
    --fail-superseded                      fail deployment if it has been superseded by another deployment. WARNING: there are some bugs in kubernetes. [$FAIL_SUPERSEDED, $PLUGIN_FAIL_SUPERSEDED]

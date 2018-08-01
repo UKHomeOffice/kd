@@ -39,6 +39,8 @@ const (
 	// FlagCaFile is the sytax to specify a CA file when FlagCa specifies a URL or
 	// when FlagCaData is set
 	FlagCaFile = "certificate-authority-file"
+	// FlagReplace allows the resources to be re-created rather than patched
+	FlagReplace = "replace"
 )
 
 var (
@@ -131,6 +133,11 @@ func main() {
 			Usage:  "only create specified resources e.g. 'kind/name' (do not update, skip if exists).",
 			EnvVar: "CREATE_ONLY_RESOURCES,PLUGIN_CREATE_ONLY_RESOURCES",
 			Value:  nil,
+		},
+		cli.BoolFlag{
+			Name:   FlagReplace,
+			Usage:  "use replace instead of apply for updating objects",
+			EnvVar: "KUBE_REPLACE,PLUGIN_KUBE_REPLACE",
 		},
 		cli.StringFlag{
 			Name:   "context, c",
@@ -396,12 +403,16 @@ func splitYamlDocs(data string) []string {
 
 func deploy(c *cli.Context, r *ObjectResource) error {
 
-	if r.CreateOnly {
-		exists, err := checkResourceExist(c, r)
+	exists := false
+	if r.CreateOnly || c.Bool(FlagReplace) {
+		var err error
+		exists, err = checkResourceExist(c, r)
 		if err != nil {
 			return fmt.Errorf(
 				"problem checking if resource %s/%s exists", r.Kind, r.Name)
 		}
+	}
+	if r.CreateOnly {
 		if exists {
 			log.Printf(
 				"skipping deploy for resource (%s/%s) marked as create only.",
@@ -413,6 +424,11 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 
 	name := r.Name
 	command := "apply"
+	if c.Bool(FlagReplace) {
+		if exists {
+			command = "replace"
+		}
+	}
 
 	if r.GenerateName != "" {
 		name = r.GenerateName
