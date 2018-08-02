@@ -89,25 +89,23 @@ The flag `--replace` can be used to override this behaviour can be useful in
 some very specific scenarios but the result is a [disruptive update](https://kubernetes.io/docs/concepts/cluster-administration/manage-deployment/#disruptive-updates)
 which should not be the default.
 
-To have the desired affect when updating objects, you may need to use optional
-kubectl arguments e.g.: `-- --force` to force deletion of some objects. **NOTE**
-history of an object is lost with `--force`.
-
-**NOTE** `apply` is used internally to create the resource if it doesn't exist.
+To have the desired affect when updating objects, `--force` is used to enable
+creation of objects created with replace. **NOTE** history of an object is lost
+with `--force`.
 
 #### Cronjobs
 
 When a cronjob object is created and only updated, any old jobs will continue
 and some fields are imutable so use of the force option may be required.
 
-E.g. to update a large cron job use `kd --replace -f cronjob.yml -- --force`.
+E.g. to update a large cron job use `kd --replace -f cronjob.yml`.
 
 #### Large Objects e.g. Configmaps
 
 As an apply uses 'patch' internally, there is a limit to the size of objects
 that can be updated this way.
 
-E.g. to update a large config map use `kd --replace -f myconfigmap.yml -- --force`.
+E.g. to update a large config map use `kd --replace -f myconfigmap.yml`.
 
 ### Run command
 

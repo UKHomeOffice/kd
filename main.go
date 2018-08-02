@@ -404,15 +404,13 @@ func splitYamlDocs(data string) []string {
 func deploy(c *cli.Context, r *ObjectResource) error {
 
 	exists := false
-	if r.CreateOnly || c.Bool(FlagReplace) {
+	if r.CreateOnly {
 		var err error
 		exists, err = checkResourceExist(c, r)
 		if err != nil {
 			return fmt.Errorf(
 				"problem checking if resource %s/%s exists", r.Kind, r.Name)
 		}
-	}
-	if r.CreateOnly {
 		if exists {
 			log.Printf(
 				"skipping deploy for resource (%s/%s) marked as create only.",
@@ -425,9 +423,7 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 	name := r.Name
 	command := "apply"
 	if c.Bool(FlagReplace) {
-		if exists {
-			command = "replace"
-		}
+		command = "replace"
 	}
 
 	if r.GenerateName != "" {
@@ -691,6 +687,20 @@ func newKubeCmdSub(c *cli.Context, args []string, subCommand bool) (*exec.Cmd, e
 	flags, err := extraFlags(c, subCommand)
 	if err != nil {
 		return nil, err
+	}
+	// If we've been asked to replace and we haven't provided the '-- --force'
+	// extra args, add it here (a update will fail if the object doesn't exist)
+	if c.Bool(FlagReplace) {
+		forceSet := false
+		for _, flag := range flags {
+			if strings.Contains(flag, "--force") {
+				forceSet = true
+				break
+			}
+		}
+		if !forceSet {
+			flags = append(flags, "--force")
+		}
 	}
 	args = append(args, flags...)
 
