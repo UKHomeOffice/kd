@@ -256,7 +256,7 @@ func runKubectl(c *cli.Context) error {
 	}
 
 	// Allow the lib to render args and then create array
-	cmd, err := newKubeCmdSub(c.Parent(), c.Args(), true)
+	cmd, err := newKubeCmdSub(c.Parent(), c.Args(), true, true)
 	if err != nil {
 		return err
 	}
@@ -404,26 +404,34 @@ func splitYamlDocs(data string) []string {
 func deploy(c *cli.Context, r *ObjectResource) error {
 
 	exists := false
-	if r.CreateOnly {
+	if r.CreateOnly || c.Bool(FlagReplace) {
 		var err error
 		exists, err = checkResourceExist(c, r)
 		if err != nil {
 			return fmt.Errorf(
 				"problem checking if resource %s/%s exists", r.Kind, r.Name)
 		}
-		if exists {
-			log.Printf(
-				"skipping deploy for resource (%s/%s) marked as create only.",
-				r.Kind,
-				r.Name)
-			return nil
+
+		if r.CreateOnly {
+			if exists {
+				log.Printf(
+					"skipping deploy for resource (%s/%s) marked as create only.",
+					r.Kind,
+					r.Name)
+				return nil
+			}
 		}
 	}
 
 	name := r.Name
 	command := "apply"
+
 	if c.Bool(FlagReplace) {
-		command = "replace"
+		if exists {
+			command = "replace"
+		} else {
+			command = "create"
+		}
 	}
 
 	if r.GenerateName != "" {
@@ -433,7 +441,7 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 
 	logDebug.Printf("about to deploy resource %s/%s (from file:%q)", r.Kind, name, r.FileName)
 	args := []string{command, "-f", "-"}
-	cmd, err := newKubeCmd(c, args)
+	cmd, err := newKubeCmd(c, args, true)
 	if err != nil {
 		return err
 	}
@@ -594,7 +602,7 @@ func watchResource(c *cli.Context, r *ObjectResource) error {
 
 func updateResourceStatus(c *cli.Context, r *ObjectResource) error {
 	args := []string{"get", r.Kind + "/" + r.Name, "-o", "yaml"}
-	cmd, err := newKubeCmd(c, args)
+	cmd, err := newKubeCmd(c, args, false)
 	if err != nil {
 		return err
 	}
@@ -615,7 +623,8 @@ func updateResourceStatus(c *cli.Context, r *ObjectResource) error {
 
 func checkResourceExist(c *cli.Context, r *ObjectResource) (bool, error) {
 	args := []string{"get", r.Kind + "/" + r.Name, "-o", "custom-columns=:.metadata.name", "--no-headers"}
-	cmd, err := newKubeCmd(c, args)
+
+	cmd, err := newKubeCmd(c, args, false)
 	if err != nil {
 		return false, err
 	}
@@ -636,16 +645,16 @@ func checkResourceExist(c *cli.Context, r *ObjectResource) (bool, error) {
 	}
 	if strings.TrimSpace(string(data[:])) == r.Name {
 		return true, nil
-	} else {
-		return false, nil
 	}
+
+	return false, nil
 }
 
-func newKubeCmd(c *cli.Context, args []string) (*exec.Cmd, error) {
-	return newKubeCmdSub(c, args, false)
+func newKubeCmd(c *cli.Context, args []string, addExtraFlags bool) (*exec.Cmd, error) {
+	return newKubeCmdSub(c, args, false, addExtraFlags)
 }
 
-func newKubeCmdSub(c *cli.Context, args []string, subCommand bool) (*exec.Cmd, error) {
+func newKubeCmdSub(c *cli.Context, args []string, subCommand bool, addExtraFlags bool) (*exec.Cmd, error) {
 
 	kube := "kubectl"
 	if c.IsSet("namespace") {
@@ -684,25 +693,27 @@ func newKubeCmdSub(c *cli.Context, args []string, subCommand bool) (*exec.Cmd, e
 		args = append([]string{"--server=" + c.String("kube-server")}, args...)
 	}
 
-	flags, err := extraFlags(c, subCommand)
-	if err != nil {
-		return nil, err
-	}
-	// If we've been asked to replace and we haven't provided the '-- --force'
-	// extra args, add it here (a update will fail if the object doesn't exist)
-	if c.Bool(FlagReplace) {
-		forceSet := false
-		for _, flag := range flags {
-			if strings.Contains(flag, "--force") {
-				forceSet = true
-				break
+	if addExtraFlags {
+		flags, err := extraFlags(c, subCommand)
+		if err != nil {
+			return nil, err
+		}
+
+		// If the --replace flag is given but the resource doesn't yet exist, the create
+		// command is used. Providing the --force flag is invalid here and so should be
+		// removed if it is present.
+		if c.Bool(FlagReplace) && args[0] == "create" {
+			for i, flag := range flags {
+				if strings.Contains(flag, "--force") {
+					logInfo.Printf("resource does not exist, dropping --force flag for create action")
+					flags = append(flags[:i], flags[i+1:]...)
+					break
+				}
 			}
 		}
-		if !forceSet {
-			flags = append(flags, "--force")
-		}
+
+		args = append(args, flags...)
 	}
-	args = append(args, flags...)
 
 	return exec.Command(kube, args...), nil
 }

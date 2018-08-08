@@ -85,27 +85,45 @@ You can fail an ongoing deployment if there's been a new deployment by adding `-
 kd will use the `apply` verb to create / update resources which is [appropriate
 in most cases](https://kubernetes.io/docs/concepts/cluster-administration/manage-deployment/#in-place-updates-of-resources).
 
-The flag `--replace` can be used to override this behaviour can be useful in 
-some very specific scenarios but the result is a [disruptive update](https://kubernetes.io/docs/concepts/cluster-administration/manage-deployment/#disruptive-updates)
-which should not be the default.
-
-To have the desired affect when updating objects, `--force` is used to enable
-creation of objects created with replace. **NOTE** history of an object is lost
-with `--force`.
+The flag `--replace` can be used to override this behaviour and may be useful in
+some very specific scenarios however the result can be a [disruptive update](https://kubernetes.io/docs/concepts/cluster-administration/manage-deployment/#disruptive-updates)
+if extra kubectl flags are applied (such as `-- --force`). Additionally, the last-applied-configuration is not saved when using this flag.
 
 #### Cronjobs
 
-When a cronjob object is created and only updated, any old jobs will continue
-and some fields are imutable so use of the force option may be required.
+When a cronjob object is created and only updated, any old jobs will continue and some
+fields are immutable, so use of the replace command and force option may be required.
 
-E.g. to update a large cron job use `kd --replace -f cronjob.yml`.
+```bash
+# The cronjob resource does not yet exist, and so a create action is performed
+$ kd --replace -f cronjob.yml -- --force
+[INFO] 2018/08/07 22:54:00 main.go:724: resource does not exist, dropping --force flag for create action
+[INFO] 2018/08/07 22:54:00 main.go:466: deploying cronjob/etcd-backup
+[INFO] 2018/08/07 22:54:00 main.go:473: cronjob "etcd-backup" created
 
-#### Large Objects e.g. Configmaps
+# The resource now exists, so a kubectl replace is performed with the extra --force arg
+$ kd --replace -f cronjob.yml -- --force
+[INFO] 2018/08/07 22:54:02 main.go:466: deploying cronjob/etcd-backup
+[INFO] 2018/08/07 22:54:03 main.go:473: cronjob "etcd-backup" deleted
+cronjob "etcd-backup" replaced
+```
+
+#### Large Objects
 
 As an apply uses 'patch' internally, there is a limit to the size of objects
-that can be updated this way.
+that can be updated this way and you may receive an error such as: `metadata.annotations: Too long: must have at most 262144 characters`
 
-E.g. to update a large config map use `kd --replace -f myconfigmap.yml`.
+Below is an example for updating a large ConfigMap:
+```bash
+# 859KB ConfigMap resource
+$ kd --replace -f configmap.yaml
+[INFO] 2018/08/07 23:02:39 main.go:466: deploying configmap/bundle
+[INFO] 2018/08/07 23:02:40 main.go:473: configmap "bundle" created
+
+$ kd --replace -f configmap.yaml
+[INFO] 2018/08/07 23:02:41 main.go:466: deploying configmap/bundle
+[INFO] 2018/08/07 23:02:42 main.go:473: configmap "bundle" replaced
+```
 
 ### Run command
 
