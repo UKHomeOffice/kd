@@ -41,6 +41,8 @@ const (
 	FlagCaFile = "certificate-authority-file"
 	// FlagReplace allows the resources to be re-created rather than patched
 	FlagReplace = "replace"
+	// FlagDelete indicates we are deleting the resources
+	FlagDelete = "delete"
 )
 
 var (
@@ -54,6 +56,9 @@ var (
 
 	// dryRun Defaults to false
 	dryRun bool
+
+	// deleteReources bool
+	deleteResources bool
 
 	// Files to delete on exit
 	tmpDir string = ""
@@ -92,6 +97,11 @@ func main() {
 			Usage:       "if true, kd will exit prior to deployment",
 			EnvVar:      "DRY_RUN",
 			Destination: &dryRun,
+		},
+		cli.BoolFlag{
+			Name:        "delete",
+			Usage:       "instead of applying the resources we are deleting them",
+			Destination: &deleteResources,
 		},
 		cli.BoolFlag{
 			Name:   "insecure-skip-tls-verify",
@@ -404,27 +414,32 @@ func splitYamlDocs(data string) []string {
 func deploy(c *cli.Context, r *ObjectResource) error {
 
 	exists := false
-	if r.CreateOnly || c.Bool(FlagReplace) {
+	if r.CreateOnly || c.Bool(FlagReplace) || c.Bool(FlagDelete) {
 		var err error
 		exists, err = checkResourceExist(c, r)
 		if err != nil {
-			return fmt.Errorf(
-				"problem checking if resource %s/%s exists", r.Kind, r.Name)
+			return fmt.Errorf("problem checking if resource %s/%s exists", r.Kind, r.Name)
 		}
 
-		if r.CreateOnly {
-			if exists {
-				log.Printf(
-					"skipping deploy for resource (%s/%s) marked as create only.",
-					r.Kind,
-					r.Name)
-				return nil
-			}
+		if r.CreateOnly && exists {
+			log.Printf("skipping deploy for resource (%s/%s) marked as create only.", r.Kind, r.Name)
+			return nil
+		}
+
+		if c.Bool(FlagDelete) && !exists {
+			log.Printf("skipping delete for resource (%s/%s) as it does not exist.", r.Kind, r.Name)
+			return nil
 		}
 	}
 
 	name := r.Name
+	action := "deploying"
 	command := "apply"
+
+	if c.Bool(FlagDelete) {
+		action = "deleting"
+		command = "delete"
+	}
 
 	if c.Bool(FlagReplace) {
 		if exists {
@@ -439,7 +454,7 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 		command = "create"
 	}
 
-	logDebug.Printf("about to deploy resource %s/%s (from file:%q)", r.Kind, name, r.FileName)
+	logDebug.Printf("%s resource %s/%s (from file:%q)", action, r.Kind, name, r.FileName)
 	args := []string{command, "-f", "-"}
 	cmd, err := newKubeCmd(c, args, true)
 	if err != nil {
@@ -463,7 +478,7 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 		stdin.Write(r.Template)
 	}()
 
-	logInfo.Printf("deploying %s/%s", strings.ToLower(r.Kind), r.Name)
+	logInfo.Printf("%s %s/%s", action, strings.ToLower(r.Kind), r.Name)
 	if err = cmd.Run(); err != nil {
 		if errbuf.Len() > 0 {
 			return fmt.Errorf(errbuf.String())
@@ -478,7 +493,7 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 		r.Name = strings.Split(resourceName, "/")[1]
 	}
 
-	if isWatchableResouce(r) {
+	if !c.Bool(FlagDelete) && isWatchableResouce(r) {
 		return watchResource(c, r)
 	}
 	return nil
