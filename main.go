@@ -256,7 +256,7 @@ func runKubectl(c *cli.Context) error {
 		})
 		if err != nil {
 			return fmt.Errorf(
-				"problem checking if resource %s/%s exists", name, kind)
+				"Problem checking if resource %s/%s exists.\nDebug info: %s", name, kind, err)
 		}
 		if exists {
 			log.Printf(
@@ -418,7 +418,7 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 		var err error
 		exists, err = checkResourceExist(c, r)
 		if err != nil {
-			return fmt.Errorf("problem checking if resource %s/%s exists", r.Kind, r.Name)
+			return fmt.Errorf("problem checking if resource %s/%s exists\nDebug info: %s", r.Kind, r.Name, err)
 		}
 
 		if r.CreateOnly && exists {
