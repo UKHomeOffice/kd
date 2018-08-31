@@ -114,7 +114,7 @@ func main() {
 		cli.BoolFlag{
 			Name:   "skip-checks",
 			Usage:  "if true, the resources will be deployed without a subsequent healthcheck",
-			Destination: &deleteResources,
+			Destination: &skipChecks,
 		},
 		cli.StringFlag{
 			Name:   "kube-server, s",
