@@ -249,7 +249,7 @@ metadata:
   name: test
 data:
   # generate a mysql safe password of 20 chars
-  password: {{ secret mysql 20 }}
+  password: {{ secret "mysql" 20 }}
 ```
 
 ```bash
@@ -266,6 +266,20 @@ data:
   username: bob
   # Create a secret suitable for mysql of 20 chars
   password: fD1wS2kzTUVVNUdJcDxGWkhedmQ=
+```
+
+If you are creating a kubernetes secret and need the content to be automatically base64 encoded, you can do the following:
+```yml
+# secret.yml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: test
+data:
+  # read the contents of the "MY_HOSTNAME" environment variable and base64 encode it
+  hostname: {{ .MY_HOSTNAME | b64enc }}
+  # base64 encode the provided string
+  username: {{ "my-username" | b64enc }}
 ```
 
 ## Configuration
