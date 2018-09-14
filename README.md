@@ -299,7 +299,7 @@ USAGE:
    kd [global options] command [command options] [arguments...]
 
 VERSION:
-   v1.10.2
+   v1.10.6
 
 AUTHOR:
    Vaidas Jablonskis <jablonskis@gmail.com>
@@ -312,7 +312,9 @@ GLOBAL OPTIONS:
    --debug                                debug output [$DEBUG, $PLUGIN_DEBUG]
    --debug-templates                      debug template output [$DEBUG_TEMPLATES, $PLUGIN_DEBUG_TEMPLATES]
    --dryrun                               if true, kd will exit prior to deployment [$DRY_RUN]
+   --delete                               instead of applying the resources we are deleting them
    --insecure-skip-tls-verify             if true, the server's certificate will not be checked for validity [$INSECURE_SKIP_TLS_VERIFY, $PLUGIN_INSECURE_SKIP_TLS_VERIFY]
+   --kube-config-data value               Kubernetes config file data [$KUBE_CONFIG_DATA, $PLUGIN_KUBE_CONFIG_DATA]
    --kube-server URL, -s URL              kubernetes api server URL [$KUBE_SERVER, $PLUGIN_KUBE_SERVER]
    --kube-token TOKEN, -t TOKEN           kubernetes auth TOKEN [$KUBE_TOKEN, $PLUGIN_KUBE_TOKEN]
    --kube-username USERNAME, -u USERNAME  kubernetes auth USERNAME [$KUBE_USERNAME, $PLUGIN_KUBE_USERNAME]

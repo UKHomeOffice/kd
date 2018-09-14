@@ -39,6 +39,8 @@ const (
 	// FlagCaFile is the sytax to specify a CA file when FlagCa specifies a URL or
 	// when FlagCaData is set
 	FlagCaFile = "certificate-authority-file"
+	// FlagConfigData allows an entire kubeconfig to be specified by flag or environment
+	FlagKubeConfigData = "kube-config-data"
 	// FlagReplace allows the resources to be re-created rather than patched
 	FlagReplace = "replace"
 	// FlagDelete indicates we are deleting the resources
@@ -107,6 +109,11 @@ func main() {
 			Name:   "insecure-skip-tls-verify",
 			Usage:  "if true, the server's certificate will not be checked for validity",
 			EnvVar: "INSECURE_SKIP_TLS_VERIFY,PLUGIN_INSECURE_SKIP_TLS_VERIFY",
+		},
+		cli.StringFlag{
+			Name:   FlagKubeConfigData,
+			Usage:  "Kubernetes config file data",
+			EnvVar: "KUBE_CONFIG_DATA,PLUGIN_KUBE_CONFIG_DATA",
 		},
 		cli.StringFlag{
 			Name:   "kube-server, s",
@@ -707,6 +714,14 @@ func newKubeCmdSub(c *cli.Context, args []string, subCommand bool, addExtraFlags
 	if c.IsSet("kube-server") {
 		args = append([]string{"--server=" + c.String("kube-server")}, args...)
 	}
+	if c.IsSet(FlagKubeConfigData) {
+		configFile := ""
+		var err error
+		if configFile, err = createKubeConfigFile(c.String(FlagKubeConfigData)); err != nil {
+			return nil, err
+		}
+		args = append([]string{"--kubeconfig=" + configFile}, args...)
+	}
 
 	if addExtraFlags {
 		flags, err := extraFlags(c, subCommand)
@@ -752,8 +767,7 @@ func getCaFileAndDownloadIfRequired(c *cli.Context) (string, error) {
 		caFile = c.String(FlagCaFile)
 	} else {
 		// This is used by cleanup
-		tmpDir, _ = ioutil.TempDir("", "kd")
-		caFile = filepath.Join(tmpDir, "kube-ca.pem")
+		caFile = filepath.Join(getKdTempDir(), "kube-ca.pem")
 	}
 
 	// skip download if ca file already exists
@@ -826,6 +840,27 @@ func createCertificateAuthority(path, content string) error {
 	}
 
 	return nil
+}
+
+// getKdTmpDir will get (or create a TempDir the first time)
+func getKdTempDir() string {
+	if len(tmpDir) < 1 {
+		// Update the global var used for cleanup
+		tmpDir, _ = ioutil.TempDir("", "kd")
+	}
+	return tmpDir
+}
+
+// createKubeConfigFile creates a kube config file
+func createKubeConfigFile(content string) (filePath string, err error) {
+	filePath = filepath.Join(getKdTempDir(), "kube-config")
+
+	// Write the file to disk
+	if err := ioutil.WriteFile(filePath, []byte(content), 0444); err != nil {
+		return "", err
+	}
+
+	return filePath, nil
 }
 
 // FilesExists checks if a file exists already
