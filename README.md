@@ -249,7 +249,7 @@ metadata:
   name: test
 data:
   # generate a mysql safe password of 20 chars
-  password: {{ secret mysql 20 }}
+  password: {{ secret "mysql" 20 }}
 ```
 
 ```bash
@@ -266,6 +266,20 @@ data:
   username: bob
   # Create a secret suitable for mysql of 20 chars
   password: fD1wS2kzTUVVNUdJcDxGWkhedmQ=
+```
+
+If you are creating a kubernetes secret and need the content to be automatically base64 encoded, you can do the following:
+```yml
+# secret.yml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: test
+data:
+  # read the contents of the "MY_HOSTNAME" environment variable and base64 encode it
+  hostname: {{ .MY_HOSTNAME | b64enc }}
+  # base64 encode the provided string
+  username: {{ "my-username" | b64enc }}
 ```
 
 ## Configuration
@@ -285,7 +299,7 @@ USAGE:
    kd [global options] command [command options] [arguments...]
 
 VERSION:
-   v1.10.2
+   v1.10.6
 
 AUTHOR:
    Vaidas Jablonskis <jablonskis@gmail.com>
@@ -298,7 +312,9 @@ GLOBAL OPTIONS:
    --debug                                debug output [$DEBUG, $PLUGIN_DEBUG]
    --debug-templates                      debug template output [$DEBUG_TEMPLATES, $PLUGIN_DEBUG_TEMPLATES]
    --dryrun                               if true, kd will exit prior to deployment [$DRY_RUN]
+   --delete                               instead of applying the resources we are deleting them
    --insecure-skip-tls-verify             if true, the server's certificate will not be checked for validity [$INSECURE_SKIP_TLS_VERIFY, $PLUGIN_INSECURE_SKIP_TLS_VERIFY]
+   --kube-config-data value               Kubernetes config file data [$KUBE_CONFIG_DATA, $PLUGIN_KUBE_CONFIG_DATA]
    --kube-server URL, -s URL              kubernetes api server URL [$KUBE_SERVER, $PLUGIN_KUBE_SERVER]
    --kube-token TOKEN, -t TOKEN           kubernetes auth TOKEN [$KUBE_TOKEN, $PLUGIN_KUBE_TOKEN]
    --kube-username USERNAME, -u USERNAME  kubernetes auth USERNAME [$KUBE_USERNAME, $PLUGIN_KUBE_USERNAME]
