@@ -59,6 +59,9 @@ var (
 	// dryRun Defaults to false
 	dryRun bool
 
+	// skipChecks Defaults to false
+	skipChecks bool
+
 	// deleteReources bool
 	deleteResources bool
 
@@ -109,6 +112,11 @@ func main() {
 			Name:   "insecure-skip-tls-verify",
 			Usage:  "if true, the server's certificate will not be checked for validity",
 			EnvVar: "INSECURE_SKIP_TLS_VERIFY,PLUGIN_INSECURE_SKIP_TLS_VERIFY",
+		},
+		cli.BoolFlag{
+			Name:        "skip-checks",
+			Usage:       "if true, the resources will be deployed without a subsequent healthcheck",
+			Destination: &skipChecks,
 		},
 		cli.StringFlag{
 			Name:   FlagKubeConfigData,
@@ -263,7 +271,7 @@ func runKubectl(c *cli.Context) error {
 		})
 		if err != nil {
 			return fmt.Errorf(
-				"Problem checking if resource %s/%s exists.\nDebug info: %s", name, kind, err)
+				"problem checking if resource %s/%s exists", name, kind)
 		}
 		if exists {
 			log.Printf(
@@ -425,7 +433,7 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 		var err error
 		exists, err = checkResourceExist(c, r)
 		if err != nil {
-			return fmt.Errorf("problem checking if resource %s/%s exists\nDebug info: %s", r.Kind, r.Name, err)
+			return fmt.Errorf("problem checking if resource %s/%s exists", r.Kind, r.Name)
 		}
 
 		if r.CreateOnly && exists {
@@ -500,7 +508,7 @@ func deploy(c *cli.Context, r *ObjectResource) error {
 		r.Name = strings.Split(resourceName, "/")[1]
 	}
 
-	if !c.Bool(FlagDelete) && isWatchableResouce(r) {
+	if !c.Bool(FlagDelete) && isWatchableResouce(r) && !skipChecks {
 		return watchResource(c, r)
 	}
 	return nil
