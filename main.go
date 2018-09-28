@@ -114,8 +114,8 @@ func main() {
 			EnvVar: "INSECURE_SKIP_TLS_VERIFY,PLUGIN_INSECURE_SKIP_TLS_VERIFY",
 		},
 		cli.BoolFlag{
-			Name:   "skip-checks",
-			Usage:  "if true, the resources will be deployed without a subsequent healthcheck",
+			Name:        "skip-checks",
+			Usage:       "if true, the resources will be deployed without a subsequent healthcheck",
 			Destination: &skipChecks,
 		},
 		cli.StringFlag{
