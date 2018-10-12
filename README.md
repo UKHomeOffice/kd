@@ -154,6 +154,7 @@ kd specific template functions:
 
 - [file](#file)
 - [secret](#secret)
+- [k8lookup](#k8lookup)
 
 ### split
 
@@ -280,6 +281,38 @@ data:
   hostname: {{ .MY_HOSTNAME | b64enc }}
   # base64 encode the provided string
   username: {{ "my-username" | b64enc }}
+```
+
+### k8lookup
+
+`k8lookup` function allows retrieval of an Kubernetes object value using the parameters:
+- `kind` - a Kubernetes object kind e.g. `pv` or `PersistentVolume`
+- `name` - an object name e.g. `sysdig-mysql-a`
+- `path` - a object path reference e.g. `.spec.capacity.storage`
+
+Example:
+
+With manually provisioned storage (e.g. iSCSI or NFS) a PV is typically managed
+using a separate repository. Using lookup, we can discover the appropriate 
+storage size for a given cluster automatically:
+
+```
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    name: sysdig-galera
+  name: data-sysdig-galera-0
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ lookup "pv" "sysdig-mysql-a" ".spec.capacity.storage" }}
+  selector:
+    matchLabels:
+      name: sysdig-mysql
+  storageClassName: manual
 ```
 
 ## Configuration
