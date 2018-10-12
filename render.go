@@ -14,10 +14,11 @@ import (
 
 var (
 	secretUsed = false
+	k8Api      K8Api
 )
 
 // Render - the function used for rendering templates (with Sprig support)
-func Render(tmpl string, vars map[string]string) (string, bool, error) {
+func Render(k K8Api, tmpl string, vars map[string]string) (string, bool, error) {
 	fm := sprig.TxtFuncMap()
 	// Preserve old KD functionality (strings param order vs sprig)
 	fm["contains"] = strings.Contains
@@ -27,6 +28,9 @@ func Render(tmpl string, vars map[string]string) (string, bool, error) {
 	fm["secret"] = secret
 	// Add file function to map
 	fm["file"] = fileRender
+	// Required for lookup function
+	k8Api = k
+	fm["k8lookup"] = k8lookup
 	secretUsed = false
 	defer func() {
 		if err := recover(); err != nil {
@@ -88,10 +92,19 @@ func fileRender(key string) string {
 	if err != nil {
 		panic(err.Error())
 	}
-	render, wasSecret, err := Render(string(data), EnvToMap())
+	render, wasSecret, err := Render(k8Api, string(data), EnvToMap())
 	if err != nil {
 		panic(err.Error())
 	}
 	secretUsed = wasSecret
 	return render
+}
+
+// k8lookup find a value from a kubernetes object
+func k8lookup(kind, name, path string) string {
+	data, err := k8Api.Lookup(kind, name, path)
+	if err != nil {
+		panic(err.Error())
+	}
+	return data
 }

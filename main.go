@@ -337,7 +337,13 @@ func run(c *cli.Context) error {
 			return err
 		}
 		for _, d := range splitYamlDocs(string(data)) {
-			rendered, genSecret, err := Render(string(d), EnvToMap())
+			var k8api K8Api
+			if dryRun {
+				k8api = NewK8ApiNoop()
+			} else {
+				k8api = NewK8ApiKubectl(c)
+			}
+			rendered, genSecret, err := Render(k8api, string(d), EnvToMap())
 			if err != nil {
 				return err
 			}

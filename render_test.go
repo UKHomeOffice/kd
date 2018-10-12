@@ -68,9 +68,10 @@ func TestRender(t *testing.T) {
 		},
 	}
 
+	api := NewK8ApiNoop()
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			got, _, err := Render(c.inputdata, c.inputvars)
+			got, _, err := Render(api, c.inputdata, c.inputvars)
 			if err != nil {
 				fmt.Println("Testing if folder doesnt exist")
 			}
@@ -83,7 +84,7 @@ func TestRender(t *testing.T) {
 	// Test of secret functions:
 	t.Run("Check secret is parsed and detected", func(t *testing.T) {
 		c := readfile("test/secret.yaml")
-		_, isSecret, err := Render(c, testData)
+		_, isSecret, err := Render(api, c, testData)
 		if err != nil {
 			fmt.Printf("unexpected problem rendering:%v\n", err)
 		}
