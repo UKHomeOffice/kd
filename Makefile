@@ -65,7 +65,7 @@ lint:
 	@which golint 2>/dev/null ; if [ $$? -eq 1 ]; then \
 		go get -u golang.org/x/lint/golint; \
 	fi
-	@golint .
+	@golint -set_exit_status .
 
 gofmt:
 	@echo "--> Running gofmt check"
