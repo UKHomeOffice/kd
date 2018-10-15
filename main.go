@@ -39,7 +39,7 @@ const (
 	// FlagCaFile is the sytax to specify a CA file when FlagCa specifies a URL or
 	// when FlagCaData is set
 	FlagCaFile = "certificate-authority-file"
-	// FlagConfigData allows an entire kubeconfig to be specified by flag or environment
+	// FlagKubeConfigData allows an entire kubeconfig to be specified by flag or environment
 	FlagKubeConfigData = "kube-config-data"
 	// FlagReplace allows the resources to be re-created rather than patched
 	FlagReplace = "replace"
@@ -63,10 +63,10 @@ var (
 	deleteResources bool
 
 	// Files to delete on exit
-	tmpDir string = ""
+	tmpDir string
 
 	// caFile
-	caFile string = ""
+	caFile string
 )
 
 func init() {

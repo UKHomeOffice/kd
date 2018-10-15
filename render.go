@@ -46,8 +46,8 @@ func Render(tmpl string, vars map[string]string) (string, bool, error) {
 // secret generate a secret
 func secret(stringType string, length int) string {
 	var (
-		upper_alpha  = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-		lower_alpha  = "abcdefghijklmnopqrstuvwxyz"
+		upperAlpha   = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+		lowerAlpha   = "abcdefghijklmnopqrstuvwxyz"
 		digits       = "0123456789"
 		specials     = "_~=+%^*/()[]{}/!@#$?|"
 		mysqlSafe    = "_!#^&*()+{}|:<>?="
@@ -57,13 +57,13 @@ func secret(stringType string, length int) string {
 
 	switch stringType {
 	case "alphanum":
-		allowedChars = []byte(upper_alpha + lower_alpha + digits)
+		allowedChars = []byte(upperAlpha + lowerAlpha + digits)
 	case "mysql":
-		allowedChars = []byte(upper_alpha + lower_alpha + digits + mysqlSafe)
+		allowedChars = []byte(upperAlpha + lowerAlpha + digits + mysqlSafe)
 	case "yaml":
-		allowedChars = []byte(upper_alpha + lower_alpha + digits + yamlSafe)
+		allowedChars = []byte(upperAlpha + lowerAlpha + digits + yamlSafe)
 	default:
-		allowedChars = []byte(upper_alpha + lower_alpha + digits + specials)
+		allowedChars = []byte(upperAlpha + lowerAlpha + digits + specials)
 	}
 
 	// Resultant buffer for generated string
