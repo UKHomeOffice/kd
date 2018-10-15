@@ -63,7 +63,7 @@ vet:
 lint:
 	@echo "--> Running golint"
 	@which golint 2>/dev/null ; if [ $$? -eq 1 ]; then \
-		go get -u github.com/golang/lint/golint; \
+		go get -u golang.org/x/lint/golint; \
 	fi
 	@golint .
 
