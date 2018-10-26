@@ -293,7 +293,7 @@ data:
 Example:
 
 With manually provisioned storage (e.g. iSCSI or NFS) a PV is typically managed
-using a separate repository. Using lookup, we can discover the appropriate 
+using a separate repository. Using lookup, we can discover the appropriate
 storage size for a given cluster automatically:
 
 ```
@@ -308,7 +308,7 @@ spec:
   - ReadWriteOnce
   resources:
     requests:
-      storage: {{ lookup "pv" "sysdig-mysql-a" ".spec.capacity.storage" }}
+      storage: {{ k8lookup "pv" "sysdig-mysql-a" ".spec.capacity.storage" }}
   selector:
     matchLabels:
       name: sysdig-mysql
@@ -332,7 +332,7 @@ USAGE:
    kd [global options] command [command options] [arguments...]
 
 VERSION:
-   v1.10.6
+   v1.10.7
 
 AUTHOR:
    Vaidas Jablonskis <jablonskis@gmail.com>
