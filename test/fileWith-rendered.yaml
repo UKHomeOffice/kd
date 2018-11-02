@@ -1,0 +1,3 @@
+something:
+  name: my-pod
+  port: 10083

@@ -1,0 +1,1 @@
+{{ fileWith .TEMPLATED_FILE_PATH (dict "NAME" "my-pod" "OFFSET" "3") }}

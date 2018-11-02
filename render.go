@@ -28,6 +28,7 @@ func Render(k K8Api, tmpl string, vars map[string]string) (string, bool, error) 
 	fm["secret"] = secret
 	// Add file function to map
 	fm["file"] = fileRender
+	fm["fileWith"] = fileRenderWithData
 	// Required for lookup function
 	k8Api = k
 	fm["k8lookup"] = k8lookup
@@ -87,17 +88,25 @@ func secret(stringType string, length int) string {
 	return base64.StdEncoding.EncodeToString(buf)
 }
 
-func fileRender(key string) string {
+func fileRenderWithData(key string, extra map[string]interface{}) string {
 	data, err := ioutil.ReadFile(key)
 	if err != nil {
 		panic(err.Error())
 	}
-	render, wasSecret, err := Render(k8Api, string(data), EnvToMap())
+	templateData := EnvToMap()
+	for key, value := range extra {
+		templateData[key] = value.(string)
+	}
+	render, wasSecret, err := Render(k8Api, string(data), templateData)
 	if err != nil {
 		panic(err.Error())
 	}
 	secretUsed = wasSecret
 	return render
+}
+
+func fileRender(key string) string {
+	return fileRenderWithData(key, map[string]interface{}{})
 }
 
 // k8lookup find a value from a kubernetes object

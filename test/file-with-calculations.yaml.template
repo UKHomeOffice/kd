@@ -1,0 +1,3 @@
+something:
+  name: {{.NAME}}
+  port: {{add 10080 .OFFSET}}
