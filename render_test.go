@@ -50,7 +50,7 @@ func TestRender(t *testing.T) {
 			want:      readfile("test/file-rendered.yaml"),
 		},
 		{
-			name:      "Check file function is rendered",
+			name:      "Check fileWith function is rendered",
 			inputdata: readfile("test/fileWith-prerendered.yaml"),
 			inputvars: testData,
 			want:      readfile("test/fileWith-rendered.yaml"),
