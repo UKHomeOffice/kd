@@ -153,6 +153,7 @@ To preserve backwards compatibility (parameter order) the following functions
 kd specific template functions:
 
 - [file](#file)
+- [fileWith](#fileWith)
 - [secret](#secret)
 - [k8lookup](#k8lookup)
 
@@ -211,6 +212,43 @@ data:
 ```
 $ cat <<EOF > config.yaml
 - one
+- two
+- three
+EOF
+$ export BAR=${PWD}/config.yaml
+$ ./kd -f file.yaml --dryrun --debug-templates
+[INFO] 2017/10/18 15:08:09 main.go:241: deploying configmap/list
+[INFO] 2017/10/18 15:08:09 main.go:248: apiVersion: v1
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: list
+data:
+  foo:
+    - one
+    - two
+    - three
+```
+
+### fileWith
+
+`fileWith` function will locate and render a configuration file from your repo with additional values specified as a Sprig dict. A full path will need to be specified, you can run this in drone by using `workspace:` and a base directory (http://docs.drone.io/workspace/#app-drawer). Here's an example:
+
+```yaml
+# file.yaml
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: list
+data:
+  foo:
+{{ fileWith .BAR (dict "FIRST" "one") | indent 4}}
+```
+
+```
+$ cat <<EOF > config.yaml
+- {{ .FIRST }}
 - two
 - three
 EOF
