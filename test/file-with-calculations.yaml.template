@@ -1,3 +1,5 @@
 something:
-  name: {{.NAME}}
-  port: {{add 10080 .OFFSET}}
+  name: {{ .NAME }}
+  port: {{ add 10080 .OFFSET }}
+  runAsUser: {{ .UID }}
+  runAsUserDefault: {{ default "1000" .UID }}

@@ -1,3 +1,7 @@
 something:
   name: my-pod
   port: 10083
+  runAsUser: <no value>
+  runAsUserDefault: 1000
+region: "<no value>"
+regionDefault: "eu-west-2"

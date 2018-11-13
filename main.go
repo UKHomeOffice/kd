@@ -45,6 +45,8 @@ const (
 	FlagReplace = "replace"
 	// FlagDelete indicates we are deleting the resources
 	FlagDelete = "delete"
+	// FlagAllowMissing indicates whether missing property values are allowed (replaced with <no value> if not provided)
+	FlagAllowMissing = "allow-missing"
 )
 
 var (
@@ -67,6 +69,9 @@ var (
 
 	// caFile
 	caFile string
+
+	// Allow missing variables to be tolerated
+	allowMissingVariables bool
 )
 
 func init() {
@@ -204,6 +209,11 @@ func main() {
 			EnvVar: "CHECK_INTERVAL,PLUGIN_CHECK_INTERVAL",
 			Value:  time.Duration(1000) * time.Millisecond,
 		},
+		cli.BoolFlag{
+			Name:   FlagAllowMissing,
+			Usage:  "if true, missing variables will be replaced with <no value> instead of generating an error",
+			EnvVar: "ALLOW_MISSING_FLAGS",
+		},
 	}
 	app.Commands = []cli.Command{
 		{
@@ -326,6 +336,10 @@ func run(c *cli.Context) error {
 		default:
 			files = append(files, fn)
 		}
+	}
+
+	if c.IsSet(FlagAllowMissing) {
+		allowMissingVariables = true
 	}
 
 	// Iterate the list of files and add rendered templates to resources list - fail early.

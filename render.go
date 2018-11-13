@@ -39,7 +39,11 @@ func Render(k K8Api, tmpl string, vars map[string]string) (string, bool, error) 
 		}
 	}()
 	t := template.Must(template.New("template").Funcs(fm).Parse(tmpl))
-	t.Option("missingkey=error")
+	if allowMissingVariables {
+		t.Option("missingkey=default")
+	} else {
+		t.Option("missingkey=error")
+	}
 	var b bytes.Buffer
 	if err := t.Execute(&b, vars); err != nil {
 		return b.String(), secretUsed, err
