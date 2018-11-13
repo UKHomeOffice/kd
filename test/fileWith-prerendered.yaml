@@ -1,1 +1,3 @@
 {{ fileWith .TEMPLATED_FILE_PATH (dict "NAME" "my-pod" "OFFSET" "3") }}
+region: "{{ .NOT_A_VALUE }}"
+regionDefault: "{{ default "eu-west-2" .NOT_A_VALUE }}"

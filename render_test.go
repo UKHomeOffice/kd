@@ -19,11 +19,16 @@ func readfile(filepath string) string {
 	return string(dat)
 }
 
-func TestRender(t *testing.T) {
+func standardTestData() map[string]string {
 	testData := make(map[string]string)
 	testData["MY_LIST"] = "one,two,three"
 	testData["FILE_PATH"] = "test/complex-file.pem"
 	testData["TEMPLATED_FILE_PATH"] = "test/file-with-calculations.yaml.template"
+	return testData
+}
+
+func TestRender(t *testing.T) {
+	testData := standardTestData()
 
 	cases := []struct {
 		name      string
@@ -48,12 +53,6 @@ func TestRender(t *testing.T) {
 			inputdata: readfile("test/file-prerendered.yaml"),
 			inputvars: testData,
 			want:      readfile("test/file-rendered.yaml"),
-		},
-		{
-			name:      "Check fileWith function is rendered",
-			inputdata: readfile("test/fileWith-prerendered.yaml"),
-			inputvars: testData,
-			want:      readfile("test/fileWith-rendered.yaml"),
 		},
 		{
 			name:      "Check contains function works as expected",
@@ -99,4 +98,23 @@ func TestRender(t *testing.T) {
 			t.Errorf("expected secret to be detected from: \n%#v", c)
 		}
 	})
+}
+
+func TestRenderMissingVariablesAllowed(t *testing.T) {
+	testData := standardTestData()
+	api := NewK8ApiNoop()
+	fileWithBefore := readfile("test/fileWith-prerendered.yaml")
+	fileWithAfter := readfile("test/fileWith-rendered.yaml")
+
+	allowMissingVariables = true
+	t.Run("Check fileWith errors if missing keys are not allowed", func(t *testing.T) {
+		got, _, err := Render(api, fileWithBefore, testData)
+		if err != nil {
+			t.Errorf("Expected no error is missing variables are allowed to be referenced")
+		}
+		if !reflect.DeepEqual(got, fileWithAfter) {
+			t.Errorf("got: %#v\nwant: %#v\n", got, fileWithAfter)
+		}
+	})
+	allowMissingVariables = false
 }
