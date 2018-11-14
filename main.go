@@ -212,7 +212,7 @@ func main() {
 		cli.BoolFlag{
 			Name:   FlagAllowMissing,
 			Usage:  "if true, missing variables will be replaced with <no value> instead of generating an error",
-			EnvVar: "ALLOW_MISSING_FLAGS",
+			EnvVar: "ALLOW_MISSING",
 		},
 	}
 	app.Commands = []cli.Command{
