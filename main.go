@@ -678,7 +678,10 @@ func checkResourceExist(c *cli.Context, r *ObjectResource) (bool, error) {
 	}
 	data, _ := ioutil.ReadAll(stdout)
 	if err := cmd.Wait(); err != nil {
-		logDebug.Printf("error with kubectl: %s", err)
+		logDebug.Printf(
+			"error with kubectl: %s. kubectl arguments: %q",
+			err,
+			strings.Join(cmd.Args, " "))
 		errData, _ := ioutil.ReadAll(stderr)
 		if strings.Contains("NotFound", string(errData[:])) {
 			return false, nil
