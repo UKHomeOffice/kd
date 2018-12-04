@@ -34,12 +34,28 @@
   version = "v2.0.0"
 
 [[projects]]
+  digest = "1:2cd7915ab26ede7d95b8749e6b1f933f1c6d5398030684e6505940a10f31cfda"
+  name = "github.com/ghodss/yaml"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "0ca9ea5df5451ffdf184b4428c902747c2c11cd7"
+  version = "v1.0.0"
+
+[[projects]]
   digest = "1:8f8811f9be822914c3a25c6a071e93beb4c805d7b026cbf298bc577bc1cc945b"
   name = "github.com/google/uuid"
   packages = ["."]
   pruneopts = "UT"
   revision = "064e2069ce9c359c118179501254f67d7d37ba24"
   version = "0.2"
+
+[[projects]]
+  digest = "1:3abc5d6220125a3b3457eb6c77eb247e0f392b13b34c03d63e42f5af631fba64"
+  name = "github.com/helm/helm"
+  packages = ["pkg/strvals"]
+  pruneopts = "UT"
+  revision = "2e55dbe1fdb5fdb96b75ff144a339489417b146b"
+  version = "v2.11.0"
 
 [[projects]]
   digest = "1:6b1e7618931d0ed9a17fec1c1d84271907aa61172c50b8272327f6cd4fafb650"
@@ -96,6 +112,7 @@
   input-imports = [
     "github.com/Masterminds/sprig",
     "github.com/cavaliercoder/grab",
+    "github.com/helm/helm/pkg/strvals",
     "github.com/joho/godotenv",
     "github.com/urfave/cli",
     "gopkg.in/yaml.v2",

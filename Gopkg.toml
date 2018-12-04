@@ -37,6 +37,10 @@
   name = "github.com/urfave/cli"
   version = "1.19.1"
 
+[[constraint]]
+  name = "github.com/helm/helm"
+  version = "v2.11.0"
+
 [prune]
   go-tests = true
   unused-packages = true

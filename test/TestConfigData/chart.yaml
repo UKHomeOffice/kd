@@ -1,0 +1,8 @@
+apiVersion: v1
+description: A demo chart to illustrate the possible
+# Note: key 'Name:' below renamed from 'name:' to match Helm
+Name: client-side-chart
+# Note: key 'Version:' below renamed from 'version:' to match Helm
+Version: 0.0.1
+sources:
+  - https://github.com/UKhomeOffice/kd/test/TestConfigData

@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -27,6 +28,8 @@ const (
 	MaxHealthcheckRetries = 3
 	// HealthCheckSleepDuration - the amount of time to sleep (seconds) between healthcehck retries
 	HealthCheckSleepDuration = time.Duration(int64(2)) * time.Second
+	// FlagConfigData for specifying config namespaced data
+	FlagConfigData = "config-data"
 	// FlagCreateOnlyResources is the flag syntax to specify create only for only
 	// the specified resource
 	FlagCreateOnlyResources = "create-only-resource"
@@ -144,6 +147,12 @@ func main() {
 			Name:   "config",
 			Usage:  "Env file location",
 			EnvVar: "CONFIG_FILE,PLUGIN_CONFIG_FILE",
+		},
+		cli.StringSliceFlag{
+			Name:   FlagConfigData,
+			Usage:  "Config data e.g. '--config-data Chart=./Chart.yaml' or '--config-data ./data.yaml'",
+			EnvVar: "KD_CONFIG_DATA,PLUGIN_KD_CONFIG_DATA",
+			Value:  nil,
 		},
 		cli.BoolFlag{
 			Name:   FlagCreateOnly,
@@ -310,12 +319,10 @@ func run(c *cli.Context) error {
 		return errors.New("no kubernetes resource files specified")
 	}
 
-	// Load Environment file overrides into the OS Environment Scope
-	if c.IsSet("config") {
-		err := godotenv.Load(c.String("config"))
-		if err != nil {
-			return errors.New("Error loading .env file")
-		}
+	// Get config data from env or files
+	conf, err := GetAnyConfigData(c)
+	if err != nil {
+		return err
 	}
 
 	// Check if all files exist first - fail early on building up a list of files
@@ -357,7 +364,7 @@ func run(c *cli.Context) error {
 			} else {
 				k8api = NewK8ApiKubectl(c)
 			}
-			rendered, genSecret, err := Render(k8api, string(d), EnvToMap())
+			rendered, genSecret, err := Render(k8api, string(d), conf)
 			if err != nil {
 				return err
 			}
@@ -387,6 +394,93 @@ func run(c *cli.Context) error {
 		}
 	}
 	return nil
+}
+
+// GetAnyConfigData get config data from env or files
+func GetAnyConfigData(c *cli.Context) (interface{}, error) {
+	// Make a map we can use:
+	confMap := make(map[string]interface{})
+	var conf interface{}
+	if c.IsSet("config") {
+		if c.IsSet(FlagConfigData) {
+			return nil, fmt.Errorf("cannot set %s if --config flag is set", FlagConfigData)
+		}
+		// Load Environment file overrides into the OS Environment Scope
+		err := godotenv.Load(c.String("config"))
+		if err != nil {
+			return nil, fmt.Errorf("Error loading .env file:%s", err)
+		}
+		// Now get any environment data (as set from above)
+	}
+	// Copy environment to new untyped map:
+	for k, v := range EnvToMap() {
+		confMap[k] = v
+	}
+	for _, cd := range c.StringSlice(FlagConfigData) {
+		// Support flag sytax --flag scope=file.yaml or --flag file.yaml
+		fields := strings.Split(cd, "=")
+		switch len(fields) {
+		case 1:
+			if len(c.StringSlice(FlagConfigData)) > 1 {
+				return nil, fmt.Errorf(
+					"only support a single unscoped %s or multiple scoped entries",
+					FlagConfigData)
+			}
+			var err error
+			// --flag file.yaml
+			conf, err = GetConfigData(fields[0], true)
+			if err != nil {
+				return nil, err
+			}
+			// Only support a single top scoped data item today
+			return conf, nil
+		case 2:
+			// --flag scope=file.yaml
+			scopedConf, err := GetConfigData(fields[1], false)
+			if err != nil {
+				return nil, err
+			}
+			// Update the scoped data:
+			confMap[fields[0]] = scopedConf
+		default:
+			return nil, fmt.Errorf(
+				"%s flag cannot be parsed; data.yaml or scope=data.yaml expected",
+				cd)
+		}
+	}
+	// Cast the typed map to generic interface
+	conf = confMap
+	return conf, nil
+}
+
+// GetConfigData gets data from a file
+func GetConfigData(f string, mergeEnv bool) (interface{}, error) {
+	var conf interface{}
+	// First load any env data from files
+	logDebug.Printf("Loading config file:%s\n", f)
+	b, err := ioutil.ReadFile(f)
+	if err != nil {
+		return nil, fmt.Errorf("error reading file '%s':%s", f, err)
+	}
+	logInfo.Printf("Loaded config data from %s", f)
+	// Load yaml
+	if err := yaml.Unmarshal(b, &conf); err != nil {
+		return nil, err
+	}
+	// Update any values which DON't exist from environment
+	if mergeEnv && reflect.TypeOf(conf).Kind() == reflect.Map {
+		confTyped := conf.(map[interface{}]interface{})
+		for k, v := range EnvToMap() {
+			if _, ok := confTyped[k]; !ok {
+				// Value NOT found - update map:
+				confTyped[k] = v
+				logDebug.Printf("updated key %s from environment", k)
+			}
+		}
+		// Replace the referenced data with the strongly typed reference
+		conf = confTyped
+	}
+	return conf, nil
 }
 
 // EnvToMap - creates a map of all environment variables
