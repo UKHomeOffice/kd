@@ -10,6 +10,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig"
+	"github.com/helm/helm/pkg/strvals"
 )
 
 var (
@@ -18,7 +19,7 @@ var (
 )
 
 // Render - the function used for rendering templates (with Sprig support)
-func Render(k K8Api, tmpl string, vars map[string]string) (string, bool, error) {
+func Render(k K8Api, tmpl string, vars interface{}) (string, bool, error) {
 	fm := sprig.TxtFuncMap()
 	// Preserve old KD functionality (strings param order vs sprig)
 	fm["contains"] = strings.Contains
@@ -32,6 +33,15 @@ func Render(k K8Api, tmpl string, vars map[string]string) (string, bool, error) 
 	// Required for lookup function
 	k8Api = k
 	fm["k8lookup"] = k8lookup
+	// Added some oft used helm functions
+	fm["toYaml"] = strvals.ToYAML
+	fm["parse"] = strvals.Parse
+	fm["parseFile"] = strvals.ParseFile
+	fm["parseInto"] = strvals.ParseInto
+	fm["parseIntoFile"] = strvals.ParseIntoFile
+	fm["parseIntoString"] = strvals.ParseIntoString
+	fm["parseString"] = strvals.ParseString
+
 	secretUsed = false
 	defer func() {
 		if err := recover(); err != nil {

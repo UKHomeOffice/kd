@@ -157,6 +157,10 @@ kd specific template functions:
 - [secret](#secret)
 - [k8lookup](#k8lookup)
 
+Extra template functions (from helm):
+
+- [strvals package](https://github.com/helm/helm/blob/master/pkg/strvals/parser.go)
+
 ### split
 
 `split` function is go's `strings.Split()`, it returns a `[]string`. A range function
@@ -358,6 +362,28 @@ spec:
 Configuration can be provided via cli flags and arguments as well as
 environment variables.
 
+### Config
+
+`--config` use of a .env file see [github.com/joho/godotenv](https://github.com/joho/godotenv/blob/master/README.md)
+
+### Config Data
+
+`--config-data` can be specified to facilitate structured yaml data in templates. It has two forms:
+
+1. `--config-data Scope=file.yaml` - data from file available at `.Scope.rootkey.subkey`
+2. `--config-data  file.yaml` - data from file available at `.rootkey.subkey`
+
+E.g. A deployment using source copied from a simple helm chart source:
+
+```
+kd --config-data Chart=./helm/simple-app/Chart.yaml \
+   --config-data Values=./helm/simple-app/values.yaml \
+   --allow-missing \
+   --file ./helm/simple-app/templates/
+```
+
+### Kubectl flags
+
 It supports end of flags `--` parameter, any flags or arguments that are
 specified after `--` will be passed onto kubectl.
 
@@ -391,6 +417,7 @@ GLOBAL OPTIONS:
    --kube-username USERNAME, -u USERNAME  kubernetes auth USERNAME [$KUBE_USERNAME, $PLUGIN_KUBE_USERNAME]
    --kube-password PASSWORD, -p PASSWORD  kubernetes auth PASSWORD [$KUBE_PASSWORD, $PLUGIN_KUBE_PASSWORD]
    --config value                         Env file location [$CONFIG_FILE, $PLUGIN_CONFIG_FILE]
+   --config-data value                    Config data e.g. --config-data=Chart=./Chart.yaml [$KD_CONFIG_DATA, $PLUGIN_KD_CONFIG_DATA]
    --create-only                          only create resources (do not update, skip if exists). [$CREATE_ONLY, $PLUGIN_CREATE_ONLY]
    --create-only-resource value           only create specified resources e.g. 'kind/name' (do not update, skip if exists). [$CREATE_ONLY_RESOURCES, $PLUGIN_CREATE_ONLY_RESOURCES]
    --replace                              use replace instead of apply for updating objects [$KUBE_REPLACE, $PLUGIN_KUBE_REPLACE]
@@ -403,6 +430,7 @@ GLOBAL OPTIONS:
    --file PATH, -f PATH                   the path to a file or directory containing kubernetes resources PATH [$FILES, $PLUGIN_FILES]
    --timeout TIMEOUT, -T TIMEOUT          the amount of time to wait for a successful deployment TIMEOUT (default: 3m0s) [$TIMEOUT, $PLUGIN_TIMEOUT]
    --check-interval INTERVAL              deployment status check interval INTERVAL (default: 1s) [$CHECK_INTERVAL, $PLUGIN_CHECK_INTERVAL]
+   --allow-missing                        if true, missing variables will be replaced with <no value> instead of generating an error [$ALLOW_MISSING]
    --help, -h                             show help
    --version, -v                          print the version
 ```
