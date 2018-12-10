@@ -10,14 +10,16 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig"
+	"github.com/helm/helm/pkg/strvals"
 )
 
 var (
 	secretUsed = false
+	k8Api      K8Api
 )
 
 // Render - the function used for rendering templates (with Sprig support)
-func Render(tmpl string, vars map[string]string) (string, bool, error) {
+func Render(k K8Api, tmpl string, vars interface{}) (string, bool, error) {
 	fm := sprig.TxtFuncMap()
 	// Preserve old KD functionality (strings param order vs sprig)
 	fm["contains"] = strings.Contains
@@ -27,6 +29,19 @@ func Render(tmpl string, vars map[string]string) (string, bool, error) {
 	fm["secret"] = secret
 	// Add file function to map
 	fm["file"] = fileRender
+	fm["fileWith"] = fileRenderWithData
+	// Required for lookup function
+	k8Api = k
+	fm["k8lookup"] = k8lookup
+	// Added some oft used helm functions
+	fm["toYaml"] = strvals.ToYAML
+	fm["parse"] = strvals.Parse
+	fm["parseFile"] = strvals.ParseFile
+	fm["parseInto"] = strvals.ParseInto
+	fm["parseIntoFile"] = strvals.ParseIntoFile
+	fm["parseIntoString"] = strvals.ParseIntoString
+	fm["parseString"] = strvals.ParseString
+
 	secretUsed = false
 	defer func() {
 		if err := recover(); err != nil {
@@ -34,7 +49,11 @@ func Render(tmpl string, vars map[string]string) (string, bool, error) {
 		}
 	}()
 	t := template.Must(template.New("template").Funcs(fm).Parse(tmpl))
-	t.Option("missingkey=error")
+	if allowMissingVariables {
+		t.Option("missingkey=default")
+	} else {
+		t.Option("missingkey=error")
+	}
 	var b bytes.Buffer
 	if err := t.Execute(&b, vars); err != nil {
 		return b.String(), secretUsed, err
@@ -46,8 +65,8 @@ func Render(tmpl string, vars map[string]string) (string, bool, error) {
 // secret generate a secret
 func secret(stringType string, length int) string {
 	var (
-		upper_alpha  = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-		lower_alpha  = "abcdefghijklmnopqrstuvwxyz"
+		upperAlpha   = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+		lowerAlpha   = "abcdefghijklmnopqrstuvwxyz"
 		digits       = "0123456789"
 		specials     = "_~=+%^*/()[]{}/!@#$?|"
 		mysqlSafe    = "_!#^&*()+{}|:<>?="
@@ -57,13 +76,13 @@ func secret(stringType string, length int) string {
 
 	switch stringType {
 	case "alphanum":
-		allowedChars = []byte(upper_alpha + lower_alpha + digits)
+		allowedChars = []byte(upperAlpha + lowerAlpha + digits)
 	case "mysql":
-		allowedChars = []byte(upper_alpha + lower_alpha + digits + mysqlSafe)
+		allowedChars = []byte(upperAlpha + lowerAlpha + digits + mysqlSafe)
 	case "yaml":
-		allowedChars = []byte(upper_alpha + lower_alpha + digits + yamlSafe)
+		allowedChars = []byte(upperAlpha + lowerAlpha + digits + yamlSafe)
 	default:
-		allowedChars = []byte(upper_alpha + lower_alpha + digits + specials)
+		allowedChars = []byte(upperAlpha + lowerAlpha + digits + specials)
 	}
 
 	// Resultant buffer for generated string
@@ -83,15 +102,32 @@ func secret(stringType string, length int) string {
 	return base64.StdEncoding.EncodeToString(buf)
 }
 
-func fileRender(key string) string {
+func fileRenderWithData(key string, extra map[string]interface{}) string {
 	data, err := ioutil.ReadFile(key)
 	if err != nil {
 		panic(err.Error())
 	}
-	render, wasSecret, err := Render(string(data), EnvToMap())
+	templateData := EnvToMap()
+	for key, value := range extra {
+		templateData[key] = value.(string)
+	}
+	render, wasSecret, err := Render(k8Api, string(data), templateData)
 	if err != nil {
 		panic(err.Error())
 	}
 	secretUsed = wasSecret
 	return render
+}
+
+func fileRender(key string) string {
+	return fileRenderWithData(key, map[string]interface{}{})
+}
+
+// k8lookup find a value from a kubernetes object
+func k8lookup(kind, name, path string) string {
+	data, err := k8Api.Lookup(kind, name, path)
+	if err != nil {
+		panic(err.Error())
+	}
+	return data
 }

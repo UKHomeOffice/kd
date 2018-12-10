@@ -1,0 +1,23 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: sample-crazy-demo
+  labels:
+    crazy: value
+    chart: "client-side-chart-0.0.1"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sample-crazy-demo
+  template:
+    metadata:
+      labels:
+        app: sample-crazy-demo
+        chart: "client-side-chart-0.0.1"
+    spec:
+      containers:
+      - name: sample-crazy-demo
+        image: "quay.io/sample:v1.2.3"
+        imagePullPolicy: IfNotPresent
+        env:

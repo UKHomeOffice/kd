@@ -19,10 +19,16 @@ func readfile(filepath string) string {
 	return string(dat)
 }
 
-func TestRender(t *testing.T) {
+func standardTestData() map[string]string {
 	testData := make(map[string]string)
 	testData["MY_LIST"] = "one,two,three"
 	testData["FILE_PATH"] = "test/complex-file.pem"
+	testData["TEMPLATED_FILE_PATH"] = "test/file-with-calculations.yaml.template"
+	return testData
+}
+
+func TestRender(t *testing.T) {
+	testData := standardTestData()
 
 	cases := []struct {
 		name      string
@@ -68,9 +74,10 @@ func TestRender(t *testing.T) {
 		},
 	}
 
+	api := NewK8ApiNoop()
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			got, _, err := Render(c.inputdata, c.inputvars)
+			got, _, err := Render(api, c.inputdata, c.inputvars)
 			if err != nil {
 				fmt.Println("Testing if folder doesnt exist")
 			}
@@ -83,7 +90,7 @@ func TestRender(t *testing.T) {
 	// Test of secret functions:
 	t.Run("Check secret is parsed and detected", func(t *testing.T) {
 		c := readfile("test/secret.yaml")
-		_, isSecret, err := Render(c, testData)
+		_, isSecret, err := Render(api, c, testData)
 		if err != nil {
 			fmt.Printf("unexpected problem rendering:%v\n", err)
 		}
@@ -91,4 +98,23 @@ func TestRender(t *testing.T) {
 			t.Errorf("expected secret to be detected from: \n%#v", c)
 		}
 	})
+}
+
+func TestRenderMissingVariablesAllowed(t *testing.T) {
+	testData := standardTestData()
+	api := NewK8ApiNoop()
+	fileWithBefore := readfile("test/fileWith-prerendered.yaml")
+	fileWithAfter := readfile("test/fileWith-rendered.yaml")
+
+	allowMissingVariables = true
+	t.Run("Check fileWith errors if missing keys are not allowed", func(t *testing.T) {
+		got, _, err := Render(api, fileWithBefore, testData)
+		if err != nil {
+			t.Errorf("Expected no error is missing variables are allowed to be referenced")
+		}
+		if !reflect.DeepEqual(got, fileWithAfter) {
+			t.Errorf("got: %#v\nwant: %#v\n", got, fileWithAfter)
+		}
+	})
+	allowMissingVariables = false
 }

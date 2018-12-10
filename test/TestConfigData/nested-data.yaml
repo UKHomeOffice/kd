@@ -1,0 +1,6 @@
+---
+data: string-value
+map:
+  data: map-data
+array:
+  - array-data

@@ -131,3 +131,91 @@ func TestEnvToMap(t *testing.T) {
 		})
 	}
 }
+
+func TestGetConfigData(t *testing.T) {
+	type ConfigFile struct {
+		file  string
+		scope string
+	}
+
+	cases := []struct {
+		name               string
+		configFiles        []ConfigFile
+		templateFile       string
+		wantFile           string
+		scope              string
+		allowMissingValues bool
+	}{
+		{
+			name: "Check simple.yaml file works",
+			configFiles: []ConfigFile{
+				{file: "./test/TestConfigData/simple.yaml"}},
+			templateFile: "./test/TestConfigData/simple.yaml.tmpl",
+			wantFile:     "./test/TestConfigData/simple.yaml",
+		},
+		{
+			name: "Check nested-data.yaml file works",
+			configFiles: []ConfigFile{
+				{file: "./test/TestConfigData/nested-data.yaml"},
+			},
+			templateFile: "./test/TestConfigData/nested-data.yaml.tmpl",
+			wantFile:     "./test/TestConfigData/nested-data.yaml",
+		},
+		{
+			name: "Check data-with-env.yaml file works",
+			configFiles: []ConfigFile{
+				{file: "./test/TestConfigData/data-with-env.yaml"},
+			},
+			templateFile: "./test/TestConfigData/data-with-env.yaml.tmpl",
+			wantFile:     "./test/TestConfigData/data-with-env.yaml",
+		},
+		{
+			name: "Check chart.yaml with variable.yaml works",
+			configFiles: []ConfigFile{
+				{file: "./test/TestConfigData/chart.yaml", scope: "Chart"},
+				{file: "./test/TestConfigData/chart-values.yaml", scope: "Values"},
+			},
+			templateFile:       "./test/TestConfigData/chart-deploy.yaml.tmpl",
+			wantFile:           "./test/TestConfigData/chart-deploy.yaml",
+			allowMissingValues: true,
+		},
+	}
+	os.Setenv("KD_TEST_DATA", "test-data")
+	// Probably want to test by rendering templates???
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			confMap := make(map[string]interface{})
+			var config interface{}
+			scoped := false
+			if len(c.configFiles) > 1 {
+				scoped = true
+			}
+			for _, cf := range c.configFiles {
+				var err error
+				// Get config and merge with environment !scoped
+				config, err = GetConfigData(cf.file, !scoped)
+				if err != nil {
+					log.Fatal(err)
+				}
+				if scoped {
+
+					// add the config to the right key to scope vars with
+					confMap[cf.scope] = config
+				}
+			}
+			if scoped {
+				config = confMap
+			}
+			api := NewK8ApiNoop()
+			wantText := readfile(c.wantFile)
+			allowMissingVariables = c.allowMissingValues
+			rendered, _, err := Render(api, readfile(c.templateFile), config)
+			if err != nil {
+				t.Errorf("Render error - %s", err)
+			}
+			if !reflect.DeepEqual(rendered, wantText) {
+				t.Errorf("got: %#v\nwant: %#v\n", rendered, wantText)
+			}
+		})
+	}
+}

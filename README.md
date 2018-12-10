@@ -153,7 +153,13 @@ To preserve backwards compatibility (parameter order) the following functions
 kd specific template functions:
 
 - [file](#file)
+- [fileWith](#fileWith)
 - [secret](#secret)
+- [k8lookup](#k8lookup)
+
+Extra template functions (from helm):
+
+- [strvals package](https://github.com/helm/helm/blob/master/pkg/strvals/parser.go)
 
 ### split
 
@@ -228,6 +234,43 @@ data:
     - three
 ```
 
+### fileWith
+
+`fileWith` function will locate and render a configuration file from your repo with additional values specified as a Sprig dict. A full path will need to be specified, you can run this in drone by using `workspace:` and a base directory (http://docs.drone.io/workspace/#app-drawer). Here's an example:
+
+```yaml
+# file.yaml
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: list
+data:
+  foo:
+{{ fileWith .BAR (dict "FIRST" "one") | indent 4}}
+```
+
+```
+$ cat <<EOF > config.yaml
+- {{ .FIRST }}
+- two
+- three
+EOF
+$ export BAR=${PWD}/config.yaml
+$ ./kd -f file.yaml --dryrun --debug-templates
+[INFO] 2017/10/18 15:08:09 main.go:241: deploying configmap/list
+[INFO] 2017/10/18 15:08:09 main.go:248: apiVersion: v1
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: list
+data:
+  foo:
+    - one
+    - two
+    - three
+```
+
 ### secret
 
 `secret` function generates a secret given the parameters `type` and `length`.
@@ -282,10 +325,64 @@ data:
   username: {{ "my-username" | b64enc }}
 ```
 
+### k8lookup
+
+`k8lookup` function allows retrieval of an Kubernetes object value using the parameters:
+- `kind` - a Kubernetes object kind e.g. `pv` or `PersistentVolume`
+- `name` - an object name e.g. `sysdig-mysql-a`
+- `path` - a object path reference e.g. `.spec.capacity.storage`
+
+Example:
+
+With manually provisioned storage (e.g. iSCSI or NFS) a PV is typically managed
+using a separate repository. Using lookup, we can discover the appropriate
+storage size for a given cluster automatically:
+
+```
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    name: sysdig-galera
+  name: data-sysdig-galera-0
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ k8lookup "pv" "sysdig-mysql-a" ".spec.capacity.storage" }}
+  selector:
+    matchLabels:
+      name: sysdig-mysql
+  storageClassName: manual
+```
+
 ## Configuration
 
 Configuration can be provided via cli flags and arguments as well as
 environment variables.
+
+### Config
+
+`--config` use of a .env file see [github.com/joho/godotenv](https://github.com/joho/godotenv/blob/master/README.md)
+
+### Config Data
+
+`--config-data` can be specified to facilitate structured yaml data in templates. It has two forms:
+
+1. `--config-data Scope=file.yaml` - data from file available at `.Scope.rootkey.subkey`
+2. `--config-data  file.yaml` - data from file available at `.rootkey.subkey`
+
+E.g. A deployment using source copied from a simple helm chart source:
+
+```
+kd --config-data Chart=./helm/simple-app/Chart.yaml \
+   --config-data Values=./helm/simple-app/values.yaml \
+   --allow-missing \
+   --file ./helm/simple-app/templates/
+```
+
+### Kubectl flags
 
 It supports end of flags `--` parameter, any flags or arguments that are
 specified after `--` will be passed onto kubectl.
@@ -299,7 +396,7 @@ USAGE:
    kd [global options] command [command options] [arguments...]
 
 VERSION:
-   v1.10.6
+   v1.10.7
 
 AUTHOR:
    Vaidas Jablonskis <jablonskis@gmail.com>
@@ -320,6 +417,7 @@ GLOBAL OPTIONS:
    --kube-username USERNAME, -u USERNAME  kubernetes auth USERNAME [$KUBE_USERNAME, $PLUGIN_KUBE_USERNAME]
    --kube-password PASSWORD, -p PASSWORD  kubernetes auth PASSWORD [$KUBE_PASSWORD, $PLUGIN_KUBE_PASSWORD]
    --config value                         Env file location [$CONFIG_FILE, $PLUGIN_CONFIG_FILE]
+   --config-data value                    Config data e.g. --config-data=Chart=./Chart.yaml [$KD_CONFIG_DATA, $PLUGIN_KD_CONFIG_DATA]
    --create-only                          only create resources (do not update, skip if exists). [$CREATE_ONLY, $PLUGIN_CREATE_ONLY]
    --create-only-resource value           only create specified resources e.g. 'kind/name' (do not update, skip if exists). [$CREATE_ONLY_RESOURCES, $PLUGIN_CREATE_ONLY_RESOURCES]
    --replace                              use replace instead of apply for updating objects [$KUBE_REPLACE, $PLUGIN_KUBE_REPLACE]
@@ -332,6 +430,7 @@ GLOBAL OPTIONS:
    --file PATH, -f PATH                   the path to a file or directory containing kubernetes resources PATH [$FILES, $PLUGIN_FILES]
    --timeout TIMEOUT, -T TIMEOUT          the amount of time to wait for a successful deployment TIMEOUT (default: 3m0s) [$TIMEOUT, $PLUGIN_TIMEOUT]
    --check-interval INTERVAL              deployment status check interval INTERVAL (default: 1s) [$CHECK_INTERVAL, $PLUGIN_CHECK_INTERVAL]
+   --allow-missing                        if true, missing variables will be replaced with <no value> instead of generating an error [$ALLOW_MISSING]
    --help, -h                             show help
    --version, -v                          print the version
 ```

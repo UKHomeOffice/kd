@@ -1,0 +1,4 @@
+---
+data: value
+test-data-from-env: test-data
+PATH: not-the-env
