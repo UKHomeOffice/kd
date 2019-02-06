@@ -549,10 +549,11 @@ func updateResFromFlags(c *cli.Context, r *ObjectResource) error {
 // splitYamlDocs splits a yaml string into separate yaml documents.
 func splitYamlDocs(data string) []string {
 	r := regexp.MustCompile(`(?m)^---\n`)
-	s := r.Split(data, -1)
-	for i, item := range s {
-		if item == "" {
-			s = append(s[:i], s[i+1:]...)
+	rSplit := r.Split(data, -1)
+	s := make([]string, 0)
+	for _, item := range rSplit {
+		if len(strings.TrimSpace(item)) > 0 {
+			s = append(s, item)
 		}
 	}
 	return s
