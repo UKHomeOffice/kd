@@ -474,13 +474,23 @@ func GetConfigData(f string, mergeEnv bool) (interface{}, error) {
 	var conf interface{}
 	// First load any env data from files
 	logDebug.Printf("Loading config file:%s\n", f)
+
 	b, err := ioutil.ReadFile(f)
 	if err != nil {
 		return nil, fmt.Errorf("error reading file '%s':%s", f, err)
 	}
 	logInfo.Printf("Loaded config data from %s", f)
+	// Allow templating of config data (e.g. env overrides of chart values):
+	k8api := NewK8ApiNoop()
+	rendered, _, err := Render(k8api, string(b), EnvToMap())
+	if err != nil {
+		return nil, fmt.Errorf("error trying to render config data file '%s':%s",
+			f,
+			err)
+	}
+
 	// Load yaml
-	if err := yaml.Unmarshal(b, &conf); err != nil {
+	if err := yaml.Unmarshal([]byte(rendered), &conf); err != nil {
 		return nil, err
 	}
 	// Update any values which DON't exist from environment
