@@ -387,6 +387,10 @@ kd --config-data Chart=./helm/simple-app/Chart.yaml \
 parsed per file instead of per resource. This allows for blocks spanning 
 multiple resources.
 
+**NOTE** Config data is also rendered using [templating](#templating). This
+allows upstream chart templates to be used whilst overriding values that may
+differ per environment (e.g. image repositories).
+
 ### Kubectl flags
 
 It supports end of flags `--` parameter, any flags or arguments that are
