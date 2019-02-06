@@ -379,8 +379,13 @@ E.g. A deployment using source copied from a simple helm chart source:
 kd --config-data Chart=./helm/simple-app/Chart.yaml \
    --config-data Values=./helm/simple-app/values.yaml \
    --allow-missing \
+   --pre-render \
    --file ./helm/simple-app/templates/
 ```
+
+**NOTE** the use of the flag `--pre-render` which allows complex charts to be 
+parsed per file instead of per resource. This allows for blocks spanning 
+multiple resources.
 
 ### Kubectl flags
 

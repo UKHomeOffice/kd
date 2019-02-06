@@ -44,6 +44,8 @@ const (
 	FlagCaFile = "certificate-authority-file"
 	// FlagKubeConfigData allows an entire kubeconfig to be specified by flag or environment
 	FlagKubeConfigData = "kube-config-data"
+	// FlagPreRenderTemplates allows mutli-resource templates to be pre-rendered
+	FlagPreRenderTemplates = "pre-render"
 	// FlagReplace allows the resources to be re-created rather than patched
 	FlagReplace = "replace"
 	// FlagDelete indicates we are deleting the resources
@@ -153,6 +155,11 @@ func main() {
 			Usage:  "Config data e.g. '--config-data Chart=./Chart.yaml' or '--config-data ./data.yaml'",
 			EnvVar: "KD_CONFIG_DATA,PLUGIN_KD_CONFIG_DATA",
 			Value:  nil,
+		},
+		cli.BoolFlag{
+			Name:   FlagPreRenderTemplates,
+			Usage:  "prerender resources (will prevent automatic create only when secret set).",
+			EnvVar: "PRE_RENDER_TEMPLATES,PLUGIN_PRE_RENDER_TEMPLATES",
 		},
 		cli.BoolFlag{
 			Name:   FlagCreateOnly,
@@ -357,13 +364,22 @@ func run(c *cli.Context) error {
 		if err != nil {
 			return err
 		}
-		for _, d := range splitYamlDocs(string(data)) {
-			var k8api K8Api
-			if dryRun {
-				k8api = NewK8ApiNoop()
-			} else {
-				k8api = NewK8ApiKubectl(c)
+		var k8api K8Api
+		if dryRun {
+			k8api = NewK8ApiNoop()
+		} else {
+			k8api = NewK8ApiKubectl(c)
+		}
+		var preRendered string
+		if c.IsSet(FlagPreRenderTemplates) {
+			preRendered, _, err = Render(k8api, string(data), conf)
+			if err != nil {
+				return err
 			}
+		} else {
+			preRendered = string(data)
+		}
+		for _, d := range splitYamlDocs(preRendered) {
 			rendered, genSecret, err := Render(k8api, string(d), conf)
 			if err != nil {
 				return err
