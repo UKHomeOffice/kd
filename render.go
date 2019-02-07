@@ -4,13 +4,15 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 	"io/ioutil"
 	"math/big"
 	"strings"
 	"text/template"
 
 	"github.com/Masterminds/sprig"
-	"github.com/helm/helm/pkg/strvals"
+	yaml "gopkg.in/yaml.v2"
+	"k8s.io/helm/pkg/chartutil"
 )
 
 var (
@@ -20,6 +22,9 @@ var (
 
 // Render - the function used for rendering templates (with Sprig support)
 func Render(k K8Api, tmpl string, vars interface{}) (string, bool, error) {
+
+	// Must cast interface back to map[string]{interface} to work with
+	// helm function ToYAML
 	fm := sprig.TxtFuncMap()
 	// Preserve old KD functionality (strings param order vs sprig)
 	fm["contains"] = strings.Contains
@@ -34,13 +39,11 @@ func Render(k K8Api, tmpl string, vars interface{}) (string, bool, error) {
 	k8Api = k
 	fm["k8lookup"] = k8lookup
 	// Added some oft used helm functions
-	fm["toYaml"] = strvals.ToYAML
-	fm["parse"] = strvals.Parse
-	fm["parseFile"] = strvals.ParseFile
-	fm["parseInto"] = strvals.ParseInto
-	fm["parseIntoFile"] = strvals.ParseIntoFile
-	fm["parseIntoString"] = strvals.ParseIntoString
-	fm["parseString"] = strvals.ParseString
+	fm["toToml"] = chartutil.ToYaml
+	fm["toYaml"] = toYaml
+	fm["fromYaml"] = chartutil.FromYaml
+	fm["toJson"] = chartutil.ToJson
+	fm["fromJson"] = chartutil.FromJson
 
 	secretUsed = false
 	defer func() {
@@ -130,4 +133,17 @@ func k8lookup(kind, name, path string) string {
 		panic(err.Error())
 	}
 	return data
+}
+
+// Copied the function from helm but use the golang yaml parser
+// as it's compatible with the generic map[insterface{}]interface{} types
+// we cope with here
+func toYaml(v interface{}) string {
+	data, err := yaml.Marshal(v)
+	if err != nil {
+		// Swallow errors inside of a template.
+		fmt.Printf("ToYaml err:%q", err)
+		return ""
+	}
+	return string(data)
 }

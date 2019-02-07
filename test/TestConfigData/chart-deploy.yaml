@@ -21,3 +21,11 @@ spec:
         image: "quay.io/sample:v1.2.3"
         imagePullPolicy: IfNotPresent
         env:
+        resources:
+          limits:
+            cpu: 100m
+            memory: 128Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          

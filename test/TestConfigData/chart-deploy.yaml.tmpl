@@ -31,9 +31,9 @@ spec:
           value: {{ .Values.agent.toleration }}
 {{- end }}
 {{- end }}
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
 {{- if .Values.nodeSelector }}
       nodeSelector:
 {{ toYaml .Values.nodeSelector | indent 8 }}
-      resources:
-{{ toYaml .Values.resources | indent 10 }}
 {{- end }}
