@@ -9,9 +9,11 @@ go: "1.10.2"
 script:
   - make testall
   - make release
+  - make docker-build
+  - make scan
   - if ([[ ${TRAVIS_BRANCH} == "master" ]] && [[ ${TRAVIS_EVENT_TYPE} == "push" ]]) || [[ -n ${TRAVIS_TAG} ]]; then
     docker login -u "ukhomeofficedigital+kubernetes_deploy_kd" -p ${DOCKER_PASSWORD} quay.io;
-    docker build -t quay.io/ukhomeofficedigital/kd:${TRAVIS_TAG:-latest} .;
+    docker tag kd:ci quay.io/ukhomeofficedigital/kd:${TRAVIS_TAG:-latest};
     docker push quay.io/ukhomeofficedigital/kd:${TRAVIS_TAG:-latest};
     fi
 

@@ -37,6 +37,17 @@ release: clean deps release-deps
 	CGO_ENABLED=0 gox -arch="${ARCHITECTURES}" -os="${PLATFORMS}" -ldflags "-w ${LFLAGS}" -output=./bin/{{.Dir}}_{{.OS}}_{{.Arch}} ./...
 	cd ./bin && sha256sum * > checksum.txt && cd -
 
+docker-build:
+	@echo "--> Building the docker image"
+	docker build . -t "${NAME}:ci"
+
+scan:
+	@echo "--> Scanning the docker image via Anchore"
+	mkdir -p images && rm -f images/${NAME}+ci.tar
+	docker save ${NAME}:ci -o images/${NAME}+ci.tar
+	chmod -R 0755 images/
+	curl -s https://ci-tools.anchore.io/inline_scan-v0.4.1 | bash -s -- -v ./images -t 500
+
 clean:
 	rm -rf ./bin 2>/dev/null
 
