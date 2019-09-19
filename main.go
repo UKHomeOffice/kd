@@ -44,6 +44,8 @@ const (
 	FlagCaFile = "certificate-authority-file"
 	// FlagKubeConfigData allows an entire kubeconfig to be specified by flag or environment
 	FlagKubeConfigData = "kube-config-data"
+	// FlagPreRenderTemplates allows mutli-resource templates to be pre-rendered
+	FlagPreRenderTemplates = "pre-render"
 	// FlagReplace allows the resources to be re-created rather than patched
 	FlagReplace = "replace"
 	// FlagDelete indicates we are deleting the resources
@@ -161,6 +163,11 @@ func main() {
 			Usage:  "Config data e.g. '--config-data Chart=./Chart.yaml' or '--config-data ./data.yaml'",
 			EnvVar: "KD_CONFIG_DATA,PLUGIN_KD_CONFIG_DATA",
 			Value:  nil,
+		},
+		cli.BoolFlag{
+			Name:   FlagPreRenderTemplates,
+			Usage:  "prerender resources (will prevent automatic create only when secret set).",
+			EnvVar: "PRE_RENDER_TEMPLATES,PLUGIN_PRE_RENDER_TEMPLATES",
 		},
 		cli.BoolFlag{
 			Name:   FlagCreateOnly,
@@ -365,13 +372,22 @@ func run(c *cli.Context) error {
 		if err != nil {
 			return err
 		}
-		for _, d := range splitYamlDocs(string(data)) {
-			var k8api K8Api
-			if dryRun {
-				k8api = NewK8ApiNoop()
-			} else {
-				k8api = NewK8ApiKubectl(c)
+		var k8api K8Api
+		if dryRun {
+			k8api = NewK8ApiNoop()
+		} else {
+			k8api = NewK8ApiKubectl(c)
+		}
+		var preRendered string
+		if c.IsSet(FlagPreRenderTemplates) {
+			preRendered, _, err = Render(k8api, string(data), conf)
+			if err != nil {
+				return err
 			}
+		} else {
+			preRendered = string(data)
+		}
+		for _, d := range splitYamlDocs(preRendered) {
 			rendered, genSecret, err := Render(k8api, string(d), conf)
 			if err != nil {
 				return err
@@ -466,13 +482,23 @@ func GetConfigData(f string, mergeEnv bool) (interface{}, error) {
 	var conf interface{}
 	// First load any env data from files
 	logDebug.Printf("Loading config file:%s\n", f)
+
 	b, err := ioutil.ReadFile(f)
 	if err != nil {
 		return nil, fmt.Errorf("error reading file '%s':%s", f, err)
 	}
 	logInfo.Printf("Loaded config data from %s", f)
+	// Allow templating of config data (e.g. env overrides of chart values):
+	k8api := NewK8ApiNoop()
+	rendered, _, err := Render(k8api, string(b), EnvToMap())
+	if err != nil {
+		return nil, fmt.Errorf("error trying to render config data file '%s':%s",
+			f,
+			err)
+	}
+
 	// Load yaml
-	if err := yaml.Unmarshal(b, &conf); err != nil {
+	if err := yaml.Unmarshal([]byte(rendered), &conf); err != nil {
 		return nil, err
 	}
 	// Update any values which DON't exist from environment
@@ -531,10 +557,11 @@ func updateResFromFlags(c *cli.Context, r *ObjectResource) error {
 // splitYamlDocs splits a yaml string into separate yaml documents.
 func splitYamlDocs(data string) []string {
 	r := regexp.MustCompile(`(?m)^---\n`)
-	s := r.Split(data, -1)
-	for i, item := range s {
-		if item == "" {
-			s = append(s[:i], s[i+1:]...)
+	rSplit := r.Split(data, -1)
+	s := make([]string, 0)
+	for _, item := range rSplit {
+		if len(strings.TrimSpace(item)) > 0 {
+			s = append(s, item)
 		}
 	}
 	return s
