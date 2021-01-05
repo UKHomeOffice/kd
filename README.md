@@ -440,6 +440,7 @@ GLOBAL OPTIONS:
    --timeout TIMEOUT, -T TIMEOUT          the amount of time to wait for a successful deployment TIMEOUT (default: 3m0s) [$TIMEOUT, $PLUGIN_TIMEOUT]
    --check-interval INTERVAL              deployment status check interval INTERVAL (default: 1s) [$CHECK_INTERVAL, $PLUGIN_CHECK_INTERVAL]
    --allow-missing                        if true, missing variables will be replaced with <no value> instead of generating an error [$ALLOW_MISSING]
+   --kubectl-binary value                 the path to the kubectl binary (default: "kubectl") [$KUBE_BINARY, $KUBECTL_BINARY]
    --help, -h                             show help
    --version, -v                          print the version
 ```

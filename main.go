@@ -52,6 +52,8 @@ const (
 	FlagDelete = "delete"
 	// FlagAllowMissing indicates whether missing property values are allowed (replaced with <no value> if not provided)
 	FlagAllowMissing = "allow-missing"
+	// FlagKubeBinary sets the location of the kubectl binary
+	FlagKubeBinary = "kubectl-binary"
 )
 
 var (
@@ -237,6 +239,12 @@ func main() {
 			Name:   FlagAllowMissing,
 			Usage:  "if true, missing variables will be replaced with <no value> instead of generating an error",
 			EnvVar: "ALLOW_MISSING",
+		},
+		cli.StringFlag{
+			Name:   FlagKubeBinary,
+			Usage:  "the path to the kubectl binary",
+			Value:  "kubectl",
+			EnvVar: "KUBE_BINARY,KUBECTL_BINARY",
 		},
 	}
 	app.Commands = []cli.Command{
@@ -830,7 +838,8 @@ func newKubeCmd(c *cli.Context, args []string, addExtraFlags bool) (*exec.Cmd, e
 
 func newKubeCmdSub(c *cli.Context, args []string, subCommand bool, addExtraFlags bool) (*exec.Cmd, error) {
 
-	kube := "kubectl"
+	kube := c.String("kubectl-binary")
+
 	if c.IsSet("namespace") {
 		args = append([]string{"--namespace=" + c.String("namespace")}, args...)
 	}
