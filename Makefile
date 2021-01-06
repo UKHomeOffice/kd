@@ -4,7 +4,7 @@ ROOT_DIR=${PWD}
 HARDWARE=$(shell uname -m)
 GIT_VERSION=$(shell git describe --always --tags --dirty)
 GIT_SHA=$(shell git rev-parse HEAD)
-GOVERSION=1.10
+GOVERSION=1.15
 BUILD_TIME=$(shell date -u '+%Y-%m-%d_%I:%M:%S%p')
 VERSION ?= ${TRAVIS_TAG:-git+${TRAVIS_COMMIT:-local+${GIT_VERSION}}}
 DEPS=$(shell go list -f '{{range .TestImports}}{{.}} {{end}}' ./...)
@@ -12,15 +12,13 @@ PACKAGES=$(shell go list ./...)
 GOFILES_NOVENDOR=$(shell find . -type f -name '*.go' -not -path "./vendor/*")
 VERSION_PKG=main
 LFLAGS ?= -X ${VERSION_PKG}.Version=${GIT_VERSION}
-VETARGS ?= -asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc -printf -rangeloops -structtags -unsafeptr
-PLATFORMS=darwin linux windows
-ARCHITECTURES=386 amd64
+VETARGS ?= -asmdecl -atomic -bool -buildtags -copylocks -methods -nilfunc -printf -rangeloops -unsafeptr
 
 .PHONY: test changelog build release lint cover vet
 
-default: deps build
+default: build
 
-testall: deps test src
+testall: test src
 
 golang:
 	@echo "--> Go Version"
@@ -31,10 +29,12 @@ build:
 	mkdir -p bin
 	go build -ldflags "${LFLAGS}" -o bin/${NAME} ./...
 
-release: clean deps release-deps
+release: clean
 	@echo "--> Compiling all the static binaries"
 	mkdir -p bin
-	CGO_ENABLED=0 gox -arch="${ARCHITECTURES}" -os="${PLATFORMS}" -ldflags "-w ${LFLAGS}" -output=./bin/{{.Dir}}_{{.OS}}_{{.Arch}} ./...
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-w ${LFLAGS}" -o ./bin/kd_linux_amd64 ./...
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags "-w ${LFLAGS}" -o ./bin/kd_darwin_amd64 ./...
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags "-w ${LFLAGS}" -o ./bin/kd_windows_amd64.exe ./...
 	cd ./bin && sha256sum * > checksum.txt && cd -
 
 docker-build:
@@ -50,19 +50,6 @@ scan:
 
 clean:
 	rm -rf ./bin 2>/dev/null
-
-dep-install:
-	@echo "--> Retrieving dependencies"
-	@dep ensure
-
-release-deps:
-	@echo "--> Installing release dependencies"
-	@go get -u github.com/mitchellh/gox
-
-deps:
-	@echo "--> Installing build dependencies"
-	@go get -u github.com/golang/dep/cmd/dep
-	$(MAKE) dep-install
 
 vet:
 	@echo "--> Running go vet $(VETARGS) ."
@@ -105,9 +92,6 @@ cover:
 
 test:
 	@echo "--> Running the tests"
-	  @if [ ! -d "vendor" ]; then \
-    make dep-install; \
-  fi
 	@go test -v ${PACKAGES}
 	@$(MAKE) cover
 
