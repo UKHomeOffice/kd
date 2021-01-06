@@ -50,6 +50,7 @@ scan:
 
 clean:
 	rm -rf ./bin 2>/dev/null
+	go mod tidy
 
 vet:
 	@echo "--> Running go vet $(VETARGS) ."
