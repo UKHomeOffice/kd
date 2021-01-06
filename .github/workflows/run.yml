@@ -1,0 +1,96 @@
+on:
+  push:
+    branches:
+    - master
+    tags:
+    - '*'
+  pull_request:
+name: Run
+jobs:
+  test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.15.5
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Test
+      run: make testall
+    - name: Create assets
+      run: make release
+    - name: Build image
+      run: |
+        make docker-build
+    - name: Scan image
+      id: scan
+      uses: anchore/scan-action@v2
+      with:
+        image: "kd:ci"
+        acs-report-enable: true
+    - name: Upload Anchore scan SARIF report
+      uses: github/codeql-action/upload-sarif@v1
+      with:
+        sarif_file: ${{ steps.scan.outputs.sarif }}
+    - name: Save Image
+      if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/master'
+      run: |
+        mkdir -p artifacts
+        docker save kd:ci > artifacts/kd+ci.tar
+    - name: Upload image
+      if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/master'
+      uses: actions/upload-artifact@v2
+      with:
+        name: docker-artifact
+        path: artifacts
+    - name: Upload binaries
+      if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/master'
+      uses: actions/upload-artifact@v2
+      with:
+        name: kd-binaries
+        path: bin
+  publish:
+    if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/master'
+    name: Publish assets
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Retrieve saved Docker image
+        uses: actions/download-artifact@v2
+        with:
+          name: docker-artifact
+          path: artifacts
+      - name: Docker load
+        run: docker load < artifacts/kd+ci.tar
+      - name: Docker tag version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          docker tag kd:ci quay.io/ukhomeofficedigital/kd:${GITHUB_REF/refs\/tags\//}
+          docker login quay.io -u ukhomeofficedigital+github_actions -p ${{ secrets.QUAY_PASSWORD }}
+          docker push quay.io/ukhomeofficedigital/kd:${GITHUB_REF/refs\/tags\//}
+      - name: Docker tag latest
+        if: github.ref == 'refs/heads/master'
+        run: |
+          docker tag kd:ci quay.io/ukhomeofficedigital/kd:latest
+          docker login quay.io -u ukhomeofficedigital+github_actions -p ${{ secrets.QUAY_PASSWORD }}
+          docker push quay.io/ukhomeofficedigital/kd:latest
+      - name: Retrieve saved kd binaries
+        uses: actions/download-artifact@v2
+        with:
+          name: kd-binaries
+          path: bin
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            bin/kd_linux_amd64
+            bin/kd_darwin_amd64
+            bin/kd_windows_amd64.exe
+            bin/checksum.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
