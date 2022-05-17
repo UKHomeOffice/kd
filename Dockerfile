@@ -1,7 +1,7 @@
 FROM alpine:latest
 
 RUN apk upgrade --no-cache
-RUN apk add --no-cache ca-certificates openssl bash
+RUN apk add --no-cache ca-certificates openssl bash jq
 RUN update-ca-certificates
 
 RUN wget https://storage.googleapis.com/kubernetes-release/release/v1.20.15/bin/linux/amd64/kubectl \
