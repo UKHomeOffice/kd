@@ -411,6 +411,8 @@ func run(c *cli.Context) error {
 	for _, r := range resources {
 		if c.Bool("debug-templates") {
 			logInfo.Printf("Template:\n" + string(r.Template[:]))
+			logInfo.Printf("\n---")
+
 		}
 		if err := yaml.Unmarshal(r.Template, &r); err != nil {
 			return err
