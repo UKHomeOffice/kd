@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cavaliercoder/grab"
+	"github.com/cavaliergopher/grab/v3"
 	"github.com/joho/godotenv"
 	"github.com/urfave/cli"
 	yaml "gopkg.in/yaml.v2"
