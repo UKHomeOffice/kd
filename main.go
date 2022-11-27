@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cavaliercoder/grab"
+	"github.com/cavaliergopher/grab/v3"
 	"github.com/joho/godotenv"
 	"github.com/urfave/cli"
 	yaml "gopkg.in/yaml.v2"
@@ -54,6 +54,8 @@ const (
 	FlagAllowMissing = "allow-missing"
 	// FlagKubeBinary sets the location of the kubectl binary
 	FlagKubeBinary = "kubectl-binary"
+	// FlagKubeDiff specifies kubectl diff should be used
+	FlagKubeDiff = "diff-only"
 )
 
 var (
@@ -114,6 +116,11 @@ func main() {
 			Usage:       "if true, kd will exit prior to deployment",
 			EnvVar:      "DRY_RUN",
 			Destination: &dryRun,
+		},
+		cli.BoolFlag{
+			Name:   FlagKubeDiff,
+			Usage:  "if true, execute kubectl diff.",
+			EnvVar: "DIFF",
 		},
 		cli.BoolFlag{
 			Name:        "delete",
@@ -260,6 +267,10 @@ func main() {
 	}
 
 	app.Action = func(cx *cli.Context) error {
+		if dryRun && cx.Bool(FlagKubeDiff) {
+			logError.Fatal("--diff and --dryRun are both enabled. Only one can be true.")
+		}
+
 		if err := run(cx); err != nil {
 			logError.Print(err)
 			return cli.NewExitError("", 1)
@@ -411,6 +422,8 @@ func run(c *cli.Context) error {
 	for _, r := range resources {
 		if c.Bool("debug-templates") {
 			logInfo.Printf("Template:\n" + string(r.Template[:]))
+			logInfo.Printf("\n---")
+
 		}
 		if err := yaml.Unmarshal(r.Template, &r); err != nil {
 			return err
@@ -418,8 +431,13 @@ func run(c *cli.Context) error {
 		// Add any flag specific settings for resources
 		updateResFromFlags(c, r)
 
-		// Only perform deploy if dry-run is not set to true
-		if !dryRun {
+		if c.Bool(FlagKubeDiff) {
+			if err := diff(c, r); err != nil {
+				log.Printf("%#v\n", err)
+				return err
+			}
+		} else if !dryRun {
+			// Only perform deploy if dry-run is not set to true
 			if err := deploy(c, r); err != nil {
 				return err
 			}
@@ -573,6 +591,50 @@ func splitYamlDocs(data string) []string {
 		}
 	}
 	return s
+}
+
+func diff(c *cli.Context, r *ObjectResource) error {
+	name := r.Name
+	logDebug.Printf("diffing resource %s/%s (from file:%q)", r.Kind, name, r.FileName)
+	args := []string{"diff", "-f", "-"}
+	cmd, err := newKubeCmd(c, args, true)
+	if err != nil {
+		return err
+	}
+
+	logDebug.Printf("%#v\n", cmd)
+
+	if c.Bool("debug") {
+		logDebug.Printf("kubectl arguments: %q", strings.Join(cmd.Args, " "))
+	}
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return err
+	}
+
+	var outbuf, errbuf bytes.Buffer
+	cmd.Stdout = &outbuf
+	cmd.Stderr = &errbuf
+
+	// logDebug.Printf("%#v\n", r.Template)
+	go func() {
+		defer stdin.Close()
+		stdin.Write(r.Template)
+	}()
+
+	logInfo.Printf("diffing %s/%s", strings.ToLower(r.Kind), r.Name)
+	if err = cmd.Run(); err != nil {
+		if errbuf.Len() > 0 {
+			logDebug.Printf("errbuff %s\n", errbuf.String())
+			return fmt.Errorf(errbuf.String())
+		}
+		// Expected to fail
+		logInfo.Print(outbuf.String())
+		logInfo.Printf("%#v\n", err)
+		return err
+	}
+
+	return nil
 }
 
 func deploy(c *cli.Context, r *ObjectResource) error {
