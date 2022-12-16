@@ -1,4 +1,4 @@
-FROM alpine:v1.21.14-rc1
+FROM alpine:edge
 
 RUN apk upgrade --no-cache
 RUN apk add --no-cache ca-certificates openssl bash
