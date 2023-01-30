@@ -1,0 +1,5 @@
+ignore:
+  # Ignoring two CVE's that are currently false positives, confirmed here: https://github.com/anchore/grype/issues/558
+  # Confirmed that version v0.56.0 of grype adds these two CVEs to the default ignore list fixing the issue.Github actions is currently pulling version v0.54.0 which is causing the false flag.
+  - vulnerability: CVE-2015-5237
+  - vulnerability: CVE-2021-22570
