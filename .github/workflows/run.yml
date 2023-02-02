@@ -14,7 +14,7 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.15.5
+        go-version: 1.16.15
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Test
@@ -26,12 +26,12 @@ jobs:
         make docker-build
     - name: Scan image
       id: scan
-      uses: anchore/scan-action@v2
+      uses: anchore/scan-action@v3
       with:
         image: "kd:ci"
-        acs-report-enable: true
+        fail-build: false
     - name: Upload Anchore scan SARIF report
-      uses: github/codeql-action/upload-sarif@v1
+      uses: github/codeql-action/upload-sarif@v2
       with:
         sarif_file: ${{ steps.scan.outputs.sarif }}
     - name: Save Image
